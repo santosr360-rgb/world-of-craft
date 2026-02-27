@@ -29,6 +29,7 @@
 
     /* Dragon HP */
     #dragon-hud {
+      display: none;
       position: fixed; top: 55px; left: 50%; transform: translateX(-50%);
       text-align: center; pointer-events: none; z-index: 200;
     }
@@ -97,6 +98,39 @@
       color: rgba(255,255,255,0.8); text-shadow: 0 1px 4px rgba(0,0,0,0.9);
       white-space: nowrap; pointer-events: none; z-index: 200;
     }
+
+    /* Player HP */
+    #player-hp {
+      position: fixed; bottom: 50px; right: 20px;
+      font-family: 'Cinzel', serif; font-size: 1.3rem; letter-spacing: 4px;
+      color: #ff4444; text-shadow: 0 0 8px #ff0000;
+      pointer-events: none; z-index: 200;
+      background: rgba(0,0,0,0.45); padding: 6px 14px; border: 1px solid #882222;
+    }
+
+    /* Temple approach hint */
+    #temple-hint {
+      display: none;
+      position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
+      font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px;
+      color: #ff8844; text-shadow: 0 0 8px #ff4400;
+      background: rgba(0,0,0,0.5); padding: 6px 16px; border: 1px solid #882200;
+      pointer-events: none; z-index: 200;
+    }
+
+    /* Game over */
+    #game-over {
+      display: none;
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-family: 'Cinzel', serif; font-size: clamp(1.5rem, 5vw, 3rem);
+      letter-spacing: 4px; color: #cc0000;
+      text-shadow: 0 0 30px #ff0000, 0 0 60px #880000;
+      text-align: center; pointer-events: none; z-index: 300;
+    }
+    #game-over .sub {
+      display: block; font-size: 0.45em; margin-top: 10px;
+      color: #ff6060; letter-spacing: 3px;
+    }
   </style>
 </head>
 <body>
@@ -113,6 +147,9 @@
   <div id="pickup-hint">⚔ Walk closer to pick up the sword!</div>
   <div id="victory-msg">IGNAROTH DEFEATED!<span class="sub">The Ember Wastes are saved.</span></div>
   <div id="hit-flash"></div>
+  <div id="player-hp">♥ ♥ ♥</div>
+  <div id="temple-hint">🔥 The Temple of Ignaroth lies ahead...</div>
+  <div id="game-over">YOU HAVE FALLEN<span class="sub">Refresh to try again.</span></div>
   <div id="controls-hint">↑↓ Move &nbsp;·&nbsp; ←→ Turn &nbsp;·&nbsp; SPACE Jump &nbsp;·&nbsp; F Attack</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
@@ -239,7 +276,8 @@ armRP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0)); georgeRoot.add(armRP);
 const BOUNDARY = 100;
 const ps = {
   pos: new THREE.Vector3(0, getTerrainHeight(0, 0), 0),
-  velY: 0, angle: 0, onGround: true, walkCycle: 0, moving: false
+  velY: 0, angle: 0, onGround: true, walkCycle: 0, moving: false,
+  hp: 3, maxHp: 3, invincible: 0, dead: false
 };
 const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
 
@@ -267,6 +305,75 @@ function placeTree(x, z) {
   g.position.set(cx, 26+Math.random()*8, cz);
   scene.add(g);
 });
+
+// ═══════════════════════════════════════════════════════════
+//  TEMPLE OF IGNAROTH
+// ═══════════════════════════════════════════════════════════
+const TEMPLE_Y = getTerrainHeight(DRAG_X, DRAG_Z);
+const TEMPLE_COMBAT_DIST = 20; // combat activates within this distance
+const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
+
+(function buildTemple() {
+  const g = new THREE.Group();
+  const W = 11, D = 11, WH = 8, WT = 1.5, EH = 3.5; // W/D=half-extents, WH=wall height, WT=wall thickness, EH=entrance half-width
+
+  // Floor platform
+  g.add(mkBox((W+WT)*2+2, 1.0, (D+WT)*2+2, STONE_C, 0, -0.5, 0));
+
+  // East wall (back)
+  g.add(mkBox(WT, WH, (D+WT)*2, DARK_C, W+WT/2, WH/2, 0));
+  // North wall (full width)
+  g.add(mkBox((W+WT)*2, WH, WT, DARK_C, 0, WH/2, -(D+WT/2)));
+  // South wall (full width)
+  g.add(mkBox((W+WT)*2, WH, WT, DARK_C, 0, WH/2, D+WT/2));
+
+  // West wall — sides of entrance gap
+  const sl = D - EH;
+  g.add(mkBox(WT, WH, sl, DARK_C, -(W+WT/2), WH/2, -(EH+sl/2)));
+  g.add(mkBox(WT, WH, sl, DARK_C, -(W+WT/2), WH/2,   EH+sl/2));
+  // West wall — lintel above entrance
+  g.add(mkBox(WT, WH-5, EH*2+2, DARK_C, -(W+WT/2), 5+(WH-5)/2, 0));
+
+  // Corner towers with battlements
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz]) => {
+    const tx = sx*(W+WT+0.75), tz = sz*(D+WT+0.75);
+    g.add(mkBox(3.5, WH+4, 3.5, LAVA_C, tx, (WH+4)/2, tz));
+    for (let b = -1; b <= 1; b += 2) {
+      g.add(mkBox(1.4, 1.8, 1.4, DARK_C, tx+b*0.9, WH+4.9, tz));
+      g.add(mkBox(1.4, 1.8, 1.4, DARK_C, tx, WH+4.9, tz+b*0.9));
+    }
+  });
+
+  // Entrance pillars
+  g.add(mkBox(2.2, WH, 2.2, LAVA_C, -(W+WT/2), WH/2, -(EH+1.1)));
+  g.add(mkBox(2.2, WH, 2.2, LAVA_C, -(W+WT/2), WH/2,   EH+1.1));
+
+  // Torches (stick + glowing flame + point light)
+  [[W-1,-(D-1)],[W-1,D-1],[-(W-1),-(D-1)],[-(W-1),D-1]].forEach(([lx,lz]) => {
+    g.add(mkBox(0.3, 1.0, 0.3, 0x3a2810, lx, 4.6, lz));
+    const fm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.48, 0.48, 0.48),
+      new THREE.MeshLambertMaterial({ color:0xff7700, emissive:new THREE.Color(0xff3300), emissiveIntensity:1.2 })
+    );
+    fm.position.set(lx, 5.3, lz);
+    g.add(fm);
+    const pl = new THREE.PointLight(0xff5500, 1.8, 14);
+    pl.position.set(lx, 5.6, lz);
+    g.add(pl);
+  });
+
+  // Lava pool in centre
+  const lm = new THREE.MeshLambertMaterial({ color:0xff2200, emissive:new THREE.Color(0xff1100), emissiveIntensity:0.8 });
+  const lp = new THREE.Mesh(new THREE.BoxGeometry(7, 0.25, 7), lm);
+  lp.position.set(4, 0.12, 0);
+  g.add(lp);
+  const ll = new THREE.PointLight(0xff2200, 1.2, 18);
+  ll.position.set(4, 1.5, 0);
+  g.add(ll);
+
+  g.position.set(DRAG_X, TEMPLE_Y, DRAG_Z);
+  scene.add(g);
+})();
 
 // ═══════════════════════════════════════════════════════════
 //  SHEEP
@@ -405,6 +512,7 @@ const dragon = {
   exploding: false,
   explodeParticles: [],
   explodeAge: 0,
+  attackTimer: 3.5,
 };
 
 function updateHpBar() {
@@ -446,6 +554,56 @@ function flashHitOverlay() {
   setTimeout(() => { hitFlashEl.style.background = 'rgba(255,50,0,0)'; }, 120);
 }
 
+const playerHpEl   = document.getElementById('player-hp');
+const templeHintEl = document.getElementById('temple-hint');
+const gameOverEl   = document.getElementById('game-over');
+const dragonHudEl  = document.getElementById('dragon-hud');
+
+function updatePlayerHp() {
+  let s = '';
+  for (let i = 0; i < ps.maxHp; i++) s += (i < ps.hp ? '♥' : '♡') + ' ';
+  playerHpEl.textContent = s.trim();
+}
+
+function hitPlayer() {
+  if (ps.invincible > 0 || ps.dead) return;
+  ps.hp--;
+  ps.invincible = 1.5;
+  hitFlashEl.style.background = 'rgba(255,0,0,0.55)';
+  setTimeout(() => { hitFlashEl.style.background = 'rgba(255,50,0,0)'; }, 250);
+  updatePlayerHp();
+  if (ps.hp <= 0) {
+    ps.dead = true;
+    gameOverEl.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FIREBALLS
+// ═══════════════════════════════════════════════════════════
+const fireballs = [];
+const FB_SPEED = 9;
+
+function spawnFireball() {
+  const spawnPos = new THREE.Vector3(
+    dragon.pos.x - Math.sin(dragon.angle) * 3,
+    dragon.pos.y + 3.5,
+    dragon.pos.z - Math.cos(dragon.angle) * 3
+  );
+  const dir = new THREE.Vector3(
+    ps.pos.x - spawnPos.x,
+    (ps.pos.y + 1.5) - spawnPos.y,
+    ps.pos.z - spawnPos.z
+  ).normalize();
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.6, 0.6, 0.6),
+    new THREE.MeshLambertMaterial({ color:0xff5500, emissive:new THREE.Color(0xff2200), emissiveIntensity:1.5 })
+  );
+  mesh.position.copy(spawnPos);
+  scene.add(mesh);
+  fireballs.push({ mesh, pos: spawnPos.clone(), vel: dir.clone().multiplyScalar(FB_SPEED), age: 0 });
+}
+
 // ═══════════════════════════════════════════════════════════
 //  EXPLOSION
 // ═══════════════════════════════════════════════════════════
@@ -477,6 +635,7 @@ function animate() {
   const dt  = Math.min((now - prevTime) / 1000, 0.05);
   prevTime  = now;
   groundSwordSpinTime += dt;
+  if (ps.dead) { renderer.render(scene, camera); return; }
 
   // ────────────────────────────────────────────────────────
   //  GEORGE — rotation & movement
@@ -665,6 +824,18 @@ function animate() {
       dragonParts.eyeMatL.emissiveIntensity = 0.9 + f * 2;
       dragonParts.eyeMatR.emissiveIntensity = 0.9 + f * 2;
     }
+
+    // Dragon attack — fire a fireball every 3.5–5 s when player is in the temple
+    if (distPlayer < TEMPLE_COMBAT_DIST) {
+      dragon.attackTimer -= dt;
+      if (dragon.attackTimer <= 0) {
+        spawnFireball();
+        dragon.attackTimer = 3.5 + Math.random() * 1.5;
+      }
+    } else {
+      // Reset timer so the dragon doesn't fire immediately on entry
+      dragon.attackTimer = Math.max(dragon.attackTimer, 1.5);
+    }
   }
 
   // ────────────────────────────────────────────────────────
@@ -692,6 +863,46 @@ function animate() {
       dragon.exploding = false;
     }
   }
+
+  // ────────────────────────────────────────────────────────
+  //  FIREBALL UPDATE
+  // ────────────────────────────────────────────────────────
+  for (let i = fireballs.length - 1; i >= 0; i--) {
+    const fb = fireballs[i];
+    fb.age += dt;
+    fb.pos.x += fb.vel.x * dt;
+    fb.pos.y += fb.vel.y * dt;
+    fb.pos.z += fb.vel.z * dt;
+    fb.mesh.position.copy(fb.pos);
+    fb.mesh.rotation.x += dt * 4;
+    fb.mesh.rotation.z += dt * 3;
+
+    // Hit player?
+    if (fb.pos.distanceTo(ps.pos) < 1.8) {
+      hitPlayer();
+      scene.remove(fb.mesh);
+      fireballs.splice(i, 1);
+      continue;
+    }
+    // Expire or hit ground
+    if (fb.age > 5 || fb.pos.y < getTerrainHeight(fb.pos.x, fb.pos.z) - 0.5) {
+      scene.remove(fb.mesh);
+      fireballs.splice(i, 1);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TEMPLE HUD / APPROACH HINT
+  // ────────────────────────────────────────────────────────
+  if (dragon.alive) {
+    const dxT = ps.pos.x - DRAG_X, dzT = ps.pos.z - DRAG_Z;
+    const distToTemple = Math.sqrt(dxT*dxT + dzT*dzT);
+    templeHintEl.style.display = (distToTemple > TEMPLE_COMBAT_DIST && distToTemple < 40) ? 'block' : 'none';
+    dragonHudEl.style.display  = distToTemple < TEMPLE_COMBAT_DIST ? 'block' : 'none';
+  }
+
+  // Invincibility countdown
+  if (ps.invincible > 0) ps.invincible -= dt;
 
   renderer.render(scene, camera);
 }
