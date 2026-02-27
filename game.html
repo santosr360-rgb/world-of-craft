@@ -306,6 +306,9 @@ function placeTree(x, z) {
   scene.add(g);
 });
 
+// Dragon / temple position — defined here so both sections can use it
+const DRAG_X = 36, DRAG_Z = 18;
+
 // ═══════════════════════════════════════════════════════════
 //  TEMPLE OF IGNAROTH
 // ═══════════════════════════════════════════════════════════
@@ -440,7 +443,6 @@ const swing = { active:false, timer:0, duration:0.5, hitRegistered:false, cooldo
 // ═══════════════════════════════════════════════════════════
 //  IGNAROTH — THE FLAME KING
 // ═══════════════════════════════════════════════════════════
-const DRAG_X = 36, DRAG_Z = 18;
 const DRAG_BASE_Y = getTerrainHeight(DRAG_X, DRAG_Z) + 4;
 
 function buildDragon() {
