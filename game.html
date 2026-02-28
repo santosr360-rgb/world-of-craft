@@ -467,21 +467,21 @@ const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
     }
   }
 
-  // Title
+  // Title banner at bottom
   ctx.fillStyle = '#ffaa33';
-  ctx.font = 'bold 38px serif';
+  ctx.font = 'bold 44px serif';
   ctx.textAlign = 'center';
-  ctx.fillText('⚔  THE BATTLE OF IGNAROTH  ⚔', CW / 2, CH - 12);
+  ctx.fillText('THE BATTLE OF IGNAROTH', CW / 2, CH - 30);
 
-  // Single plane on the east interior wall — rotation.y = PI/2 makes it face west
+  // Single plane on the east interior wall — -PI/2 makes front face point WEST toward player
   const tex   = new THREE.CanvasTexture(cv);
   const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(24, 16),
+    new THREE.PlaneGeometry(26, 14),
     new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
   );
-  // East interior wall face = DRAG_X + 16 in world X; step 1 unit inside
-  plane.position.set(DRAG_X + 15, TEMPLE_Y + 8, DRAG_Z);
-  plane.rotation.y = Math.PI / 2;  // now faces west, toward the entrance
+  // Interior face of east wall is at DRAG_X+16; place 0.5 units inside the room
+  plane.position.set(DRAG_X + 15.5, TEMPLE_Y + 7, DRAG_Z);
+  plane.rotation.y = -Math.PI / 2;  // front face points west (-X), toward the entrance
   scene.add(plane);
 })();
 
