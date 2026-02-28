@@ -427,9 +427,26 @@ const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
 //  DRAGON BATTLE MURAL  (world-space, east interior wall)
 // ═══════════════════════════════════════════════════════════
 (function buildMural() {
-  // Dragon battle mural — MeshBasicMaterial so it shows regardless of lighting
-  // 12 cols × 8 rows: 1=red dragon  2=dark wing  3=fire orange  4=fire yellow
-  const pixels = [
+  // Draw the dragon battle scene onto an HTML canvas, apply as a texture.
+  // A single PlaneGeometry + CanvasTexture — nothing to occlude, nothing to
+  // z-fight, guaranteed to render.
+  const CW = 960, CH = 640;
+  const cv = document.createElement('canvas');
+  cv.width = CW; cv.height = CH;
+  const ctx = cv.getContext('2d');
+
+  // Stone background
+  ctx.fillStyle = '#140a04';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Decorative border
+  ctx.strokeStyle = '#5a2a08';
+  ctx.lineWidth = 26;
+  ctx.strokeRect(13, 13, CW - 26, CH - 26);
+
+  // 12-col × 8-row pixel art dragon battle
+  // 1=red dragon  2=dark wing  3=fire orange  4=fire yellow
+  const pix = [
     [1,1,0,0,0,0,0,0,0,0,1,1],
     [1,2,1,0,0,3,3,0,0,1,2,1],
     [2,1,1,0,3,4,4,3,0,1,1,2],
@@ -439,39 +456,33 @@ const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
     [0,0,1,0,3,3,3,3,0,1,0,0],
     [0,0,1,0,0,3,3,0,0,1,0,0],
   ];
-  const C = { 1:0xdd1100, 2:0x770000, 3:0xff6600, 4:0xffee00 };
-  const MPIX = 1.85, mRows = pixels.length, mCols = pixels[0].length;
-  // width = 12×1.85 = 22.2  height = 8×1.85 = 14.8 — fills the whole east wall
-
-  // 2 units inside the east interior wall face (world X = DRAG_X + 16)
-  const WX  = DRAG_X + 16 - 2.2;
-  const WZ0 = DRAG_Z - (mCols * MPIX) / 2;
-  const WY0 = TEMPLE_Y + 0.1;
-
-  // Dark backing board — also MeshBasicMaterial, always visible
-  const backMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.45, mRows*MPIX + 1.6, mCols*MPIX + 1.6),
-    new THREE.MeshBasicMaterial({ color: 0x060202 })
-  );
-  backMesh.position.set(WX - 0.35, WY0 + mRows*MPIX/2, DRAG_Z);
-  scene.add(backMesh);
-
-  // Pixel tiles — pure MeshBasicMaterial: colour shows with zero lighting
-  const tileGeo = new THREE.BoxGeometry(0.6, MPIX * 0.94, MPIX * 0.94);
-  for (let r = 0; r < mRows; r++) {
-    for (let c = 0; c < mCols; c++) {
-      const v = pixels[r][c];
+  const clr = { 1:'#ee1100', 2:'#991100', 3:'#ff7700', 4:'#ffee00' };
+  const PW = (CW - 80) / 12, PH = (CH - 100) / 8;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 12; c++) {
+      const v = pix[r][c];
       if (!v) continue;
-      const tile = new THREE.Mesh(tileGeo,
-        new THREE.MeshBasicMaterial({ color: C[v] }));
-      tile.position.set(
-        WX,
-        WY0 + (mRows - 1 - r) * MPIX + MPIX / 2,
-        WZ0 + c * MPIX + MPIX / 2
-      );
-      scene.add(tile);
+      ctx.fillStyle = clr[v];
+      ctx.fillRect(40 + c * PW + 3, 40 + r * PH + 3, PW - 6, PH - 6);
     }
   }
+
+  // Title
+  ctx.fillStyle = '#ffaa33';
+  ctx.font = 'bold 38px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚔  THE BATTLE OF IGNAROTH  ⚔', CW / 2, CH - 12);
+
+  // Single plane on the east interior wall — rotation.y = PI/2 makes it face west
+  const tex   = new THREE.CanvasTexture(cv);
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(24, 16),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+  );
+  // East interior wall face = DRAG_X + 16 in world X; step 1 unit inside
+  plane.position.set(DRAG_X + 15, TEMPLE_Y + 8, DRAG_Z);
+  plane.rotation.y = Math.PI / 2;  // now faces west, toward the entrance
+  scene.add(plane);
 })();
 
 // ═══════════════════════════════════════════════════════════
