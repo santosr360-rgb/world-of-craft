@@ -290,6 +290,7 @@ const ps = {
   hp: 3, maxHp: 3, invincible: 0, dead: false
 };
 const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
+const victory = { active: false, timer: 0 };
 
 // ═══════════════════════════════════════════════════════════
 //  TREES
@@ -678,7 +679,7 @@ const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
-  if (e.code === 'KeyF' && sword.pickedUp && !swing.active && swing.cooldown <= 0) {
+  if (e.code === 'KeyF' && sword.pickedUp && !swing.active && swing.cooldown <= 0 && !victory.active) {
     swing.active = true; swing.timer = 0; swing.hitRegistered = false;
   }
 });
@@ -866,8 +867,8 @@ function animate() {
   legRP.rotation.x = -sw * 0.55;
   headPivot.rotation.x = ps.moving ? Math.sin(ps.walkCycle * 2) * 0.04 : 0;
 
-  // Arm rotation (unless overridden by swing)
-  if (!swing.active) {
+  // Arm rotation (unless overridden by swing or victory)
+  if (!swing.active && !victory.active) {
     armLP.rotation.x = -sw * 0.45;
     armRP.rotation.x =  sw * 0.45;
   }
@@ -875,7 +876,22 @@ function animate() {
   // ── Camera follow ──
   const dxC = ps.pos.x - DRAG_X, dzC = ps.pos.z - DRAG_Z;
   const inTemple = Math.sqrt(dxC*dxC + dzC*dzC) < TEMPLE_COMBAT_DIST;
-  if (inTemple) {
+  if (victory.active) {
+    // ── Victory cinematic: zoom out, show character raising sword ──
+    victory.timer += dt;
+    georgeRoot.visible = true;
+    fpArm.visible = false;
+    // Camera pulls back and up behind the player
+    _eu.set(0, ps.angle, 0);
+    _cOff.set(0, 14, 30).applyEuler(_eu);
+    _cTgt.copy(ps.pos).add(_cOff);
+    camera.position.lerp(_cTgt, 0.03);
+    camera.lookAt(ps.pos.x, ps.pos.y + 2, ps.pos.z);
+    // Sword arm shoots up triumphantly, left arm follows
+    const armT = Math.min(victory.timer / 0.8, 1.0);
+    armRP.rotation.x = -2.6 * armT;   // right arm (sword) straight up
+    armLP.rotation.x = -2.0 * armT;   // left arm raised too
+  } else if (inTemple) {
     // First-person: hide George, put camera at eye level facing player direction
     georgeRoot.visible = false;
     camera.position.set(ps.pos.x, ps.pos.y + 1.6, ps.pos.z);
@@ -1042,8 +1058,8 @@ function animate() {
       k.hopTimer = 1.8 + Math.random() * 2.4;
     }
     if (!k.onGround) {
-      k.pos.x += Math.sin(k.angle) * 3.5 * dt;
-      k.pos.z += Math.cos(k.angle) * 3.5 * dt;
+      k.pos.x -= Math.sin(k.angle) * 3.5 * dt;
+      k.pos.z -= Math.cos(k.angle) * 3.5 * dt;
       k.velY  -= 22 * dt;
       k.pos.y += k.velY * dt;
     }
@@ -1194,6 +1210,8 @@ function hitDragon() {
     addScore(10);
     victoryMsgEl.style.display = 'block';
     document.getElementById('dragon-hud').style.display = 'none';
+    victory.active = true;
+    victory.timer  = 0;
   }
 }
 
