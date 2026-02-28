@@ -290,8 +290,8 @@ function placeTree(x, z) {
   scene.add(mkBox(2.9, 2.9, 2.9, 0x2e7d32, x, y+4.2, z));
   scene.add(mkBox(1.8, 1.8, 1.8, 0x388e3c, x, y+6.2, z));
 }
-[[22,12],[-20,16],[12,-24],[-26,-6],[32,-18],[-32,22],[16,32],
- [-14,-32],[38,6],[-38,-14],[6,38],[-6,-38],[42,28],[-42,16],
+[[-20,16],[12,-24],[-26,-6],[32,-18],[-32,22],[16,32],
+ [-14,-32],[-38,-14],[6,38],[-6,-38],[-42,16],
  [24,-38],[-24,32],[48,-4],[-48,8],[30,44],[-30,-44],[10,18],[-16,-20]]
 .forEach(([x,z]) => placeTree(x,z));
 
@@ -307,7 +307,7 @@ function placeTree(x, z) {
 });
 
 // Dragon / temple position — defined here so both sections can use it
-const DRAG_X = 36, DRAG_Z = 18;
+const DRAG_X = 65, DRAG_Z = 32;
 
 // ═══════════════════════════════════════════════════════════
 //  TEMPLE OF IGNAROTH
@@ -702,7 +702,6 @@ function spawnExplosion() {
 // ═══════════════════════════════════════════════════════════
 let prevTime = performance.now();
 let groundSwordSpinTime = 0;
-let camY = 5, camZ = 10;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -778,13 +777,23 @@ function animate() {
   // ── Camera follow ──
   const dxC = ps.pos.x - DRAG_X, dzC = ps.pos.z - DRAG_Z;
   const inTemple = Math.sqrt(dxC*dxC + dzC*dzC) < TEMPLE_COMBAT_DIST;
-  camY += ((inTemple ? 20 : 5)  - camY) * 0.06;
-  camZ += ((inTemple ? 4  : 10) - camZ) * 0.06;
-  _eu.set(0, ps.angle, 0);
-  _cOff.set(0, camY, camZ).applyEuler(_eu);
-  _cTgt.copy(ps.pos).add(_cOff);
-  camera.position.lerp(_cTgt, 0.09);
-  camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
+  if (inTemple) {
+    // First-person: hide George, put camera at eye level facing player direction
+    georgeRoot.visible = false;
+    camera.position.set(ps.pos.x, ps.pos.y + 1.6, ps.pos.z);
+    camera.lookAt(
+      ps.pos.x - Math.sin(ps.angle) * 10,
+      ps.pos.y + 1.6,
+      ps.pos.z - Math.cos(ps.angle) * 10
+    );
+  } else {
+    georgeRoot.visible = true;
+    _eu.set(0, ps.angle, 0);
+    _cOff.set(0, 5, 10).applyEuler(_eu);
+    _cTgt.copy(ps.pos).add(_cOff);
+    camera.position.lerp(_cTgt, 0.09);
+    camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
+  }
 
   // ────────────────────────────────────────────────────────
   //  SWORD — ground spin + pickup detection
