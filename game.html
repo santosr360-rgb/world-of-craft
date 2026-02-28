@@ -423,27 +423,27 @@ const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
   ];
   const muralColors = [null, 0xaa1500, 0x880000, 0x550e00, 0xff5500, 0xffcc00, 0xff2200];
   const mRows = mural.length, mCols = mural[0].length;
-  const MPIX = 0.8;
+  const MPIX = 1.2;                          // each pixel tile is 1.2 × 1.2 units
   const mStartZ = -(mCols * MPIX) / 2;
-  const mStartY = 1.3;
-  // Dark stone frame
-  g.add(mkBox(0.08, mRows*MPIX+1.2, mCols*MPIX+1.2, 0x111010, W-0.16, mStartY+(mRows*MPIX)/2, 0));
-  // Pixel tiles
+  const mStartY = 0.6;
+  // Dark stone frame sits flush against the wall behind the tiles
+  g.add(mkBox(0.3, mRows*MPIX+1.6, mCols*MPIX+1.6, 0x111010, W-0.6, mStartY+(mRows*MPIX)/2, 0));
+  // Pixel tiles pushed 0.5 units off the wall face so they're clearly visible
   for (let r = 0; r < mRows; r++) {
     for (let c = 0; c < mCols; c++) {
       const v = mural[r][c];
       if (!v) continue;
       const by = mStartY + (mRows-1-r)*MPIX + MPIX/2;
       const bz = mStartZ + c*MPIX + MPIX/2;
-      const box = mkBox(0.14, MPIX*0.88, MPIX*0.88, muralColors[v], W-0.08, by, bz);
+      const box = mkBox(0.4, MPIX*0.92, MPIX*0.92, muralColors[v], W-0.4, by, bz);
       box.material.emissive.setHex(muralColors[v]);
-      box.material.emissiveIntensity = v >= 4 ? 0.5 : 0.12;
+      box.material.emissiveIntensity = v >= 4 ? 0.9 : 0.45;  // fire glows bright, dragon glows too
       g.add(box);
     }
   }
-  // Warm spotlight illuminating the mural
-  const muralLight = new THREE.PointLight(0xffaa66, 1.4, 16);
-  muralLight.position.set(W-5, mStartY+(mRows*MPIX)/2, 0);
+  // Bright warm spotlight flooding the entire mural
+  const muralLight = new THREE.PointLight(0xffcc88, 4.5, 35);
+  muralLight.position.set(W-7, mStartY+(mRows*MPIX)/2, 0);
   g.add(muralLight);
 
   g.position.set(DRAG_X, TEMPLE_Y, DRAG_Z);
@@ -506,6 +506,15 @@ handSword.position.set(0.05, -0.9, -0.1); // at end of right arm, pointing forwa
 handSword.rotation.x = -0.2;
 handSword.visible = false;
 armRP.add(handSword);
+
+// ── First-person arm + sword viewmodel (shown inside temple) ──
+const fpArm = new THREE.Group();
+fpArm.add(mkBox(0.22, 0.55, 0.22, SHIRT,    0, -0.28,  0));   // forearm
+fpArm.add(mkBox(0.07, 0.95, 0.07, 0xdddddd, 0, -0.88, -0.05)); // blade
+fpArm.add(mkBox(0.44, 0.07, 0.07, 0xaaaa44, 0, -0.42,  0));   // guard
+fpArm.add(mkBox(0.09, 0.30, 0.09, 0x5a3a1e, 0, -0.27,  0));   // handle
+fpArm.visible = false;
+scene.add(fpArm);
 
 const sword = { pickedUp: false };
 
@@ -729,6 +738,20 @@ function animate() {
     ps.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.z));
   }
 
+  // ── Temple wall collision (W=16, D=14, entrance half-width=5.5 on west side) ──
+  {
+    const tx = ps.pos.x - DRAG_X, tz = ps.pos.z - DRAG_Z;
+    const M = 0.5;
+    // Only clamp when player is clearly inside the interior
+    if (tx > -16 && tx < 16 && tz > -14 && tz < 14) {
+      if (tx >  16 - M) ps.pos.x = DRAG_X + 16 - M;          // east wall
+      if (tz < -14 + M) ps.pos.z = DRAG_Z - 14 + M;          // north wall
+      if (tz >  14 - M) ps.pos.z = DRAG_Z + 14 - M;          // south wall
+      if (tx < -16 + M && Math.abs(tz) > 5.5)                 // west wall (solid, no entrance)
+        ps.pos.x = DRAG_X - 16 + M;
+    }
+  }
+
   // ── Jump & gravity ──
   if ((keys['Space'] || keys['KeyE']) && ps.onGround) {
     ps.velY = JUMP_VEL; ps.onGround = false;
@@ -786,8 +809,33 @@ function animate() {
       ps.pos.y + 1.6,
       ps.pos.z - Math.cos(ps.angle) * 10
     );
+    // FP arm viewmodel — lower-right of screen, animates with swing
+    if (sword.pickedUp) {
+      fpArm.visible = true;
+      const fpFwdX = -Math.sin(ps.angle), fpFwdZ = -Math.cos(ps.angle);
+      const fpRtX  =  Math.cos(ps.angle), fpRtZ  = -Math.sin(ps.angle);
+      fpArm.position.set(
+        camera.position.x + fpFwdX * 0.5 + fpRtX * 0.4,
+        camera.position.y - 0.26,
+        camera.position.z + fpFwdZ * 0.5 + fpRtZ * 0.4
+      );
+      fpArm.rotation.set(0, ps.angle, 0);
+      if (swing.active) {
+        const t = swing.timer / swing.duration;
+        let a;
+        if      (t < 0.25) a = -0.6 * (t / 0.25);
+        else if (t < 0.75) a = -0.6 + 2.4 * ((t - 0.25) / 0.5);
+        else               a =  1.8 * (1 - (t - 0.75) / 0.25);
+        fpArm.rotation.x = a;
+      } else {
+        fpArm.rotation.x = 0;
+      }
+    } else {
+      fpArm.visible = false;
+    }
   } else {
     georgeRoot.visible = true;
+    fpArm.visible = false;
     _eu.set(0, ps.angle, 0);
     _cOff.set(0, 5, 10).applyEuler(_eu);
     _cTgt.copy(ps.pos).add(_cOff);
