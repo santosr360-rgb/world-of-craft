@@ -877,20 +877,28 @@ function animate() {
   const dxC = ps.pos.x - DRAG_X, dzC = ps.pos.z - DRAG_Z;
   const inTemple = Math.sqrt(dxC*dxC + dzC*dzC) < TEMPLE_COMBAT_DIST;
   if (victory.active) {
-    // ── Victory cinematic: zoom out, show character raising sword ──
+    // ── Victory cinematic: character raises sword, camera orbits to show them ──
     victory.timer += dt;
     georgeRoot.visible = true;
     fpArm.visible = false;
-    // Camera pulls back and up behind the player
-    _eu.set(0, ps.angle, 0);
-    _cOff.set(0, 14, 30).applyEuler(_eu);
-    _cTgt.copy(ps.pos).add(_cOff);
-    camera.position.lerp(_cTgt, 0.03);
-    camera.lookAt(ps.pos.x, ps.pos.y + 2, ps.pos.z);
+
+    // On the very first frame: snap camera to a diagonal position inside the
+    // temple so we immediately see the character, not a wall.
+    // Fixed world-space offset (not player-angle-dependent):
+    //   12 units west, 8 up, 7 north — well inside the temple roof.
+    if (victory.timer <= dt + 0.01) {
+      camera.position.set(ps.pos.x - 12, ps.pos.y + 8, ps.pos.z - 7);
+    }
+
+    // Drift slowly outward to a wider cinematic frame
+    _cTgt.set(ps.pos.x - 18, ps.pos.y + 12, ps.pos.z - 10);
+    camera.position.lerp(_cTgt, 0.025);
+    camera.lookAt(ps.pos.x, ps.pos.y + 2.5, ps.pos.z);
+
     // Sword arm shoots up triumphantly, left arm follows
-    const armT = Math.min(victory.timer / 0.8, 1.0);
-    armRP.rotation.x = -2.6 * armT;   // right arm (sword) straight up
-    armLP.rotation.x = -2.0 * armT;   // left arm raised too
+    const armT = Math.min(victory.timer / 0.7, 1.0);
+    armRP.rotation.x = -2.7 * armT;   // right arm (sword) nearly straight up
+    armLP.rotation.x = -2.1 * armT;   // left arm raised too
   } else if (inTemple) {
     // First-person: hide George, put camera at eye level facing player direction
     georgeRoot.visible = false;
@@ -1212,6 +1220,10 @@ function hitDragon() {
     document.getElementById('dragon-hud').style.display = 'none';
     victory.active = true;
     victory.timer  = 0;
+    // Golden triumph light — illuminates the character for the cinematic shot
+    const tLight = new THREE.PointLight(0xffe080, 4.0, 22);
+    tLight.position.set(ps.pos.x - 8, ps.pos.y + 10, ps.pos.z - 4);
+    scene.add(tLight);
   }
 }
 
