@@ -799,11 +799,15 @@ function animate() {
   // ────────────────────────────────────────────────────────
   //  GEORGE — rotation & movement
   // ────────────────────────────────────────────────────────
-  if (keys['ArrowLeft']  || keys['KeyA']) ps.angle += ROTATE_SPEED * dt;
-  if (keys['ArrowRight'] || keys['KeyD']) ps.angle -= ROTATE_SPEED * dt;
+  if (!victory.active) {
+    if (keys['ArrowLeft']  || keys['KeyA']) ps.angle += ROTATE_SPEED * dt;
+    if (keys['ArrowRight'] || keys['KeyD']) ps.angle -= ROTATE_SPEED * dt;
+  }
 
-  const mz = (keys['ArrowUp']   || keys['KeyW'] ? -1 : 0)
-            + (keys['ArrowDown'] || keys['KeyS'] ?  1 : 0);
+  const mz = !victory.active
+    ? (keys['ArrowUp']   || keys['KeyW'] ? -1 : 0)
+    + (keys['ArrowDown'] || keys['KeyS'] ?  1 : 0)
+    : 0;
   ps.moving = mz !== 0;
   if (ps.moving) {
     _eu.set(0, ps.angle, 0);
@@ -829,7 +833,7 @@ function animate() {
   }
 
   // ── Jump & gravity ──
-  if ((keys['Space'] || keys['KeyE']) && ps.onGround) {
+  if (!victory.active && (keys['Space'] || keys['KeyE']) && ps.onGround) {
     ps.velY = JUMP_VEL; ps.onGround = false;
   }
 
@@ -877,28 +881,32 @@ function animate() {
   const dxC = ps.pos.x - DRAG_X, dzC = ps.pos.z - DRAG_Z;
   const inTemple = Math.sqrt(dxC*dxC + dzC*dzC) < TEMPLE_COMBAT_DIST;
   if (victory.active) {
-    // ── Victory cinematic: character raises sword, camera orbits to show them ──
+    // ── Victory cinematic: character on hilltop, heroic low-angle shot ──
     victory.timer += dt;
     georgeRoot.visible = true;
     fpArm.visible = false;
 
-    // On the very first frame: snap camera to a diagonal position inside the
-    // temple so we immediately see the character, not a wall.
-    // Fixed world-space offset (not player-angle-dependent):
-    //   12 units west, 8 up, 7 north — well inside the temple roof.
+    // First frame: teleport character to hilltop and snap camera into position
     if (victory.timer <= dt + 0.01) {
-      camera.position.set(ps.pos.x - 12, ps.pos.y + 8, ps.pos.z - 7);
+      const hillTop = getTerrainHeight(0, 0);
+      ps.pos.set(0, hillTop, 0);
+      ps.velY    = 0;
+      ps.onGround = true;
+      ps.angle   = Math.PI; // face south — directly toward the camera
+      // Heroic low-angle camera: south of hilltop, slightly below peak,
+      // looking up at the character against the open sky
+      camera.position.set(0, hillTop - 4, 22);
     }
 
-    // Drift slowly outward to a wider cinematic frame
-    _cTgt.set(ps.pos.x - 18, ps.pos.y + 12, ps.pos.z - 10);
-    camera.position.lerp(_cTgt, 0.025);
-    camera.lookAt(ps.pos.x, ps.pos.y + 2.5, ps.pos.z);
+    // Slow pull-back to reveal the full landscape around the hero
+    _cTgt.set(0, getTerrainHeight(0, 0) - 2, 30);
+    camera.position.lerp(_cTgt, 0.015);
+    camera.lookAt(0, getTerrainHeight(0, 0) + 5, 0); // aim at the raised sword tip
 
-    // Sword arm shoots up triumphantly, left arm follows
-    const armT = Math.min(victory.timer / 0.7, 1.0);
-    armRP.rotation.x = -2.7 * armT;   // right arm (sword) nearly straight up
-    armLP.rotation.x = -2.1 * armT;   // left arm raised too
+    // Sword arm shoots up triumphantly
+    const armT = Math.min(victory.timer / 0.6, 1.0);
+    armRP.rotation.x = -2.7 * armT;
+    armLP.rotation.x = -2.1 * armT;
   } else if (inTemple) {
     // First-person: hide George, put camera at eye level facing player direction
     georgeRoot.visible = false;
@@ -1220,10 +1228,6 @@ function hitDragon() {
     document.getElementById('dragon-hud').style.display = 'none';
     victory.active = true;
     victory.timer  = 0;
-    // Golden triumph light — illuminates the character for the cinematic shot
-    const tLight = new THREE.PointLight(0xffe080, 4.0, 22);
-    tLight.position.set(ps.pos.x - 8, ps.pos.y + 10, ps.pos.z - 4);
-    scene.add(tLight);
   }
 }
 
