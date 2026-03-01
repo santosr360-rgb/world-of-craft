@@ -127,6 +127,66 @@
       pointer-events: none; z-index: 200;
     }
 
+    /* Glacius HP */
+    #glacius-hud {
+      display: none;
+      position: fixed; top: 55px; left: 50%; transform: translateX(-50%);
+      text-align: center; pointer-events: none; z-index: 200;
+    }
+    #glacius-label {
+      font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 3px;
+      color: #80d8f0; text-shadow: 0 0 10px #00aaff; margin-bottom: 4px;
+    }
+    #glacius-hp-bar {
+      width: 220px; height: 14px;
+      background: #001a2a; border: 2px solid #1166aa; border-radius: 2px;
+    }
+    #glacius-hp-fill {
+      height: 100%; width: 100%;
+      background: linear-gradient(90deg, #0088cc, #80d8f0);
+      transition: width 0.25s ease;
+    }
+
+    /* Ice temple hint */
+    #ice-temple-hint {
+      display: none;
+      position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
+      font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px;
+      color: #80d8f0; text-shadow: 0 0 8px #00aaff;
+      background: rgba(0,20,40,0.6); padding: 6px 16px; border: 1px solid #1166aa;
+      pointer-events: none; z-index: 200;
+    }
+
+    /* Level transition overlay */
+    #level-transition {
+      display: none;
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-family: 'Cinzel', serif; font-size: clamp(1rem, 3vw, 2rem);
+      letter-spacing: 4px; color: #80d8f0;
+      text-shadow: 0 0 30px #00aaff, 0 0 60px #0044aa;
+      text-align: center; pointer-events: none; z-index: 400;
+      animation: victoryPulse 1s ease-in-out infinite alternate;
+    }
+    #level-transition .sub {
+      display: block; font-size: 0.5em; margin-top: 10px;
+      color: #aaddff; letter-spacing: 3px;
+    }
+
+    /* Glacius victory */
+    #glacius-victory-msg {
+      display: none;
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-family: 'Cinzel', serif; font-size: clamp(1.5rem, 5vw, 3rem);
+      letter-spacing: 4px; color: #80d8f0;
+      text-shadow: 0 0 30px #00aaff, 0 0 60px #003388;
+      text-align: center; pointer-events: none; z-index: 300;
+      animation: victoryPulse 1s ease-in-out infinite alternate;
+    }
+    #glacius-victory-msg .sub {
+      display: block; font-size: 0.5em; margin-top: 10px;
+      color: #aaddff; letter-spacing: 3px;
+    }
+
     /* Game over */
     #game-over {
       display: none;
@@ -158,6 +218,13 @@
   <div id="hit-flash"></div>
   <div id="player-hp">♥ ♥ ♥</div>
   <div id="temple-hint">🔥 The Temple of Ignaroth lies ahead...</div>
+  <div id="ice-temple-hint">❄ The Ice Temple of Glacius lies ahead...</div>
+  <div id="glacius-hud">
+    <div id="glacius-label">❄ GLACIUS — THE FROZEN TERROR</div>
+    <div id="glacius-hp-bar"><div id="glacius-hp-fill"></div></div>
+  </div>
+  <div id="level-transition"></div>
+  <div id="glacius-victory-msg">GLACIUS DEFEATED!<span class="sub">The Frozen Wastes are free.</span></div>
   <div id="game-over">YOU HAVE FALLEN<span class="sub">Refresh to try again.</span></div>
   <div id="score-hud">SCORE: 0</div>
   <div id="controls-hint">↑↓ Move &nbsp;·&nbsp; ←→ Turn &nbsp;·&nbsp; SPACE Jump &nbsp;·&nbsp; F Attack</div>
@@ -291,6 +358,7 @@ const ps = {
 };
 const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
 const victory = { active: false, timer: 0 };
+let level2StartedFlag = false;
 
 // ═══════════════════════════════════════════════════════════
 //  TREES
@@ -326,6 +394,13 @@ const DRAG_X = 65, DRAG_Z = 32;
 const TEMPLE_Y = getTerrainHeight(DRAG_X, DRAG_Z);
 const TEMPLE_COMBAT_DIST = 20; // combat activates within this distance
 const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
+
+// ── Level 2: Glacius ──
+const GLAC_X = -55, GLAC_Z = -45;
+const ICE_TEMPLE_Y   = getTerrainHeight(GLAC_X, GLAC_Z);
+const GLAC_BASE_Y    = ICE_TEMPLE_Y + 4;
+const ICE_COMBAT_DIST = 20;
+let currentLevel = 1;
 
 (function buildTemple() {
   const g = new THREE.Group();
@@ -487,6 +562,104 @@ const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
 })();
 
 // ═══════════════════════════════════════════════════════════
+//  ICE TEMPLE OF GLACIUS  (hidden until level 2)
+// ═══════════════════════════════════════════════════════════
+const iceTempleGroup = (function buildIceTemple() {
+  const g = new THREE.Group();
+  const W = 16, D = 14, WH = 9, WT = 1.8, EH = 5.5;
+  const I1 = 0x8ec5d6, I2 = 0x4a8fa8, I3 = 0xcce5f0;
+
+  g.add(mkBox((W+WT)*2+4, 0.9, (D+WT)*2+4, I3, 0, -0.45, 0)); // platform
+  // Walls
+  g.add(mkBox(WT, WH, (D+WT)*2, I2,  W+WT/2,   WH/2, 0));         // east
+  g.add(mkBox((W+WT)*2, WH, WT, I2,  0,         WH/2, -(D+WT/2))); // north
+  g.add(mkBox((W+WT)*2, WH, WT, I2,  0,         WH/2,  D+WT/2));   // south
+  const sl = D - EH;
+  g.add(mkBox(WT, WH, sl, I2, -(W+WT/2), WH/2, -(EH+sl/2)));  // west-north
+  g.add(mkBox(WT, WH, sl, I2, -(W+WT/2), WH/2,  EH+sl/2));    // west-south
+  g.add(mkBox(WT, WH-5, EH*2+2, I2, -(W+WT/2), 5+(WH-5)/2, 0)); // lintel
+  // Interior ice pillars
+  [-8, 0, 8].forEach(z => {
+    g.add(mkBox(1.2, WH+1, 1.2, I3,  W-3, (WH+1)/2, z));
+    g.add(mkBox(1.2, WH+1, 1.2, I3, -(W-3),(WH+1)/2, z));
+  });
+  // Parapet
+  const WH2 = 4, topY = WH + WH2;
+  g.add(mkBox(WT, WH2, (D+WT)*2, I1,  W+WT/2,   WH+WH2/2, 0));
+  g.add(mkBox((W+WT)*2, WH2, WT, I1,  0,         WH+WH2/2, -(D+WT/2)));
+  g.add(mkBox((W+WT)*2, WH2, WT, I1,  0,         WH+WH2/2,  D+WT/2));
+  g.add(mkBox(WT, WH2, (D+WT)*2, I1, -(W+WT/2), WH+WH2/2, 0));
+  // Ice-spike crenellations
+  const mBS = 4.2, mBH = 2.4;
+  for (let mz = -(D+WT); mz <= D+WT; mz += mBS) {
+    g.add(mkBox(WT+0.4, mBH, 1.8, I3,  W+WT/2, topY+mBH/2, mz));
+    g.add(mkBox(WT+0.4, mBH, 1.8, I3, -(W+WT/2), topY+mBH/2, mz));
+  }
+  // Corner ice spires
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz]) => {
+    const tx = sx*(W+WT+2.0), tz = sz*(D+WT+2.0), tH = topY+7;
+    g.add(mkBox(5.0, tH, 5.0, I1, tx, tH/2, tz));
+    g.add(mkBox(2.8, 3.5, 2.8, I3, tx, tH+1.75, tz));
+  });
+  // Entrance pillars
+  g.add(mkBox(3.2, WH+3, 3.2, I3, -(W+WT/2), (WH+3)/2, -(EH+1.6)));
+  g.add(mkBox(3.2, WH+3, 3.2, I3, -(W+WT/2), (WH+3)/2,  EH+1.6));
+
+  g.position.set(GLAC_X, ICE_TEMPLE_Y, GLAC_Z);
+  g.visible = false;
+  scene.add(g);
+  return g;
+})();
+
+// Ice mural on east wall of ice temple (world-space, hidden until level 2)
+const iceMuralPlane = (function buildIceMural() {
+  const CW = 960, CH = 640;
+  const cv = document.createElement('canvas');
+  cv.width = CW; cv.height = CH;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#020d1a';
+  ctx.fillRect(0, 0, CW, CH);
+  ctx.strokeStyle = '#1a6080';
+  ctx.lineWidth = 22;
+  ctx.strokeRect(11, 11, CW-22, CH-22);
+  // Pixel grid: 1=ice body  2=dark wing  3=light blue  4=white spike
+  const pix = [
+    [0,0,2,2,0,0,0,0,2,2,0,0],
+    [0,2,1,2,3,3,3,3,2,1,2,0],
+    [2,1,1,3,4,4,4,4,3,1,1,2],
+    [1,1,3,4,4,4,4,4,4,3,1,1],
+    [0,1,3,4,4,4,4,4,4,3,1,0],
+    [0,1,3,3,4,4,4,4,3,3,1,0],
+    [0,0,1,0,3,4,4,3,0,1,0,0],
+    [0,0,0,0,0,4,4,0,0,0,0,0],
+  ];
+  const clr = { 1:'#4a9ab8', 2:'#2a6080', 3:'#80d8f0', 4:'#e8f8ff' };
+  const PW = (CW-80)/12, PH = (CH-100)/8;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 12; c++) {
+      const v = pix[r][c];
+      if (!v) continue;
+      ctx.fillStyle = clr[v];
+      ctx.fillRect(40 + c*PW+3, 40 + r*PH+3, PW-6, PH-6);
+    }
+  }
+  ctx.fillStyle = '#80d8f0';
+  ctx.font = 'bold 44px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('THE FROZEN TERROR', CW/2, CH-30);
+  const tex = new THREE.CanvasTexture(cv);
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(26, 14),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+  );
+  plane.position.set(GLAC_X + 15.5, ICE_TEMPLE_Y + 7, GLAC_Z);
+  plane.rotation.y = -Math.PI / 2;
+  plane.visible = false;
+  scene.add(plane);
+  return plane;
+})();
+
+// ═══════════════════════════════════════════════════════════
 //  SHEEP
 // ═══════════════════════════════════════════════════════════
 function createSheep(sx, sz) {
@@ -541,6 +714,112 @@ function createKangaroo(kx, kz) {
 }
 const kangarooList = [[-30,10],[25,-30],[-15,-40],[40,-25],[-45,20],[15,40],[-35,-20],[30,30]]
   .map(([x,z]) => createKangaroo(x,z));
+
+// ═══════════════════════════════════════════════════════════
+//  PENGUINS  (level 2 — hidden until startLevel2)
+// ═══════════════════════════════════════════════════════════
+function createPenguin(px, pz) {
+  const root = new THREE.Group();
+  const BLK = 0x111122, WHT = 0xf0f0f0, ORG = 0xff8800;
+  root.add(mkBox(0.52, 0.80, 0.42, BLK, 0, 0.55, 0));            // body
+  root.add(mkBox(0.30, 0.55, 0.10, WHT, 0, 0.55, -0.22));        // belly
+  root.add(mkBox(0.42, 0.38, 0.38, BLK, 0, 1.12, 0));            // head
+  root.add(mkBox(0.13, 0.10, 0.06, WHT,-0.13,1.17,-0.20));       // eye patch L
+  root.add(mkBox(0.13, 0.10, 0.06, WHT, 0.13,1.17,-0.20));       // eye patch R
+  root.add(mkBox(0.07, 0.07, 0.05, 0x000000,-0.13,1.17,-0.23));  // pupil L
+  root.add(mkBox(0.07, 0.07, 0.05, 0x000000, 0.13,1.17,-0.23));  // pupil R
+  root.add(mkBox(0.10, 0.07, 0.14, ORG, 0, 1.09,-0.24));         // beak
+  const flL = new THREE.Group(); flL.position.set(-0.35, 0.65, 0);
+  flL.add(mkBox(0.12, 0.48, 0.14, BLK, 0,-0.24, 0)); root.add(flL);
+  const flR = new THREE.Group(); flR.position.set( 0.35, 0.65, 0);
+  flR.add(mkBox(0.12, 0.48, 0.14, BLK, 0,-0.24, 0)); root.add(flR);
+  root.add(mkBox(0.16, 0.07, 0.22, ORG,-0.15, 0.08, 0.04));      // foot L
+  root.add(mkBox(0.16, 0.07, 0.22, ORG, 0.15, 0.08, 0.04));      // foot R
+  const py = getTerrainHeight(px, pz);
+  root.position.set(px, py, pz);
+  root.visible = false;
+  scene.add(root);
+  return { mesh: root, flL, flR,
+           pos: new THREE.Vector3(px, py, pz),
+           angle: Math.random()*Math.PI*2, walkCycle: 0,
+           walkTimer: Math.random()*3, walking: true };
+}
+const penguinList = [
+  [-45,-35],[-62,-30],[-40,-52],[-68,-46],[-52,-58],
+  [-36,-42],[-58,-62],[-72,-36],[-47,-68],[-33,-48]
+].map(([x,z]) => createPenguin(x,z));
+
+// ═══════════════════════════════════════════════════════════
+//  GLACIUS — THE FROZEN TERROR  (level 2 boss, hidden until startLevel2)
+// ═══════════════════════════════════════════════════════════
+function buildGlacius() {
+  const root = new THREE.Group();
+  const IB = 0x7fc4d8, IW = 0x4a96b8, IL = 0xd0eef8, IS = 0xe8f4fd;
+  root.add(mkBox(3.5,2.2,5.2, IB,  0, 1.1,  0));        // body
+  root.add(mkBox(3.8,0.5,5.4, IL,  0, 0.06, 0));        // ice belly
+  root.add(mkBox(1.4,2.0,1.6, IB,  0, 2.7,-2.8));       // neck
+  root.add(mkBox(2.1,1.7,2.4, 0x5aa0bc, 0, 3.5,-4.2));  // head
+  root.add(mkBox(1.3,0.8,1.6, 0x4a90ac, 0, 3.1,-5.4));  // snout
+  root.add(mkBox(0.22,0.15,0.12, 0xaaddee,-0.3,3.12,-6.18)); // nostril L
+  root.add(mkBox(0.22,0.15,0.12, 0xaaddee, 0.3,3.12,-6.18)); // nostril R
+  root.add(mkBox(0.28,1.8,0.28, IS,-0.65,4.9,-4.0));    // horn L
+  root.add(mkBox(0.28,1.8,0.28, IS, 0.65,4.9,-4.0));    // horn R
+  root.add(mkBox(0.2,1.1,0.2, IS,-0.3,4.6,-4.0));       // sub-spike L
+  root.add(mkBox(0.2,1.1,0.2, IS, 0.3,4.6,-4.0));       // sub-spike R
+  // Glowing ice eyes
+  const eyeMatGL = new THREE.MeshLambertMaterial({ color:0x00ccff, emissive:0x00aaff, emissiveIntensity:1.3 });
+  const eyeMatGR = eyeMatGL.clone();
+  const eyeGL = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatGL);
+  eyeGL.position.set(-0.58,3.52,-5.36); root.add(eyeGL);
+  const eyeGR = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatGR);
+  eyeGR.position.set( 0.58,3.52,-5.36); root.add(eyeGR);
+  // Tail
+  root.add(mkBox(2.0,1.6,2.5, IB,  0, 0.9, 3.0));
+  root.add(mkBox(1.2,1.1,2.8, 0x6ab0c8, 0, 0.55, 5.5));
+  root.add(mkBox(0.7,0.7,2.0, 0x5aa0b8, 0, 0.28, 7.8));
+  root.add(mkBox(0.35,0.35,0.9, IS, 0, 0.15, 9.5));    // ice tip
+  // Back spikes
+  [-0.8,0,0.8].forEach(ix => root.add(mkBox(0.22,1.5,0.22, IS, ix, 1.0+Math.abs(ix)*0.3, ix)));
+  // Wings
+  const wingGLP = new THREE.Group(); wingGLP.position.set(-1.75,2.0,0.5);
+  wingGLP.add(mkBox(3.6,0.2,2.6, IW,-1.8,0,0));
+  wingGLP.add(mkBox(2.5,0.18,2.2, 0x3a80a0,-5.1,0.1,0.4));
+  wingGLP.add(mkBox(1.2,0.15,1.5, 0x2a6080,-7.1,0.2,0.6));
+  root.add(wingGLP);
+  const wingGRP = new THREE.Group(); wingGRP.position.set(1.75,2.0,0.5);
+  wingGRP.add(mkBox(3.6,0.2,2.6, IW, 1.8,0,0));
+  wingGRP.add(mkBox(2.5,0.18,2.2, 0x3a80a0, 5.1,0.1,0.4));
+  wingGRP.add(mkBox(1.2,0.15,1.5, 0x2a6080, 7.1,0.2,0.6));
+  root.add(wingGRP);
+  // Legs
+  function mkGLeg(lx,lz) {
+    root.add(mkBox(0.65,1.3,0.65, IB,    lx,  0.3, lz));
+    root.add(mkBox(0.5, 1.3,0.5,  0x5a9ab0, lx*0.8,-1.1,lz+lx*0.05));
+    root.add(mkBox(0.7, 0.25,1.0, IS,   lx*0.8,-1.8,lz-0.3));
+  }
+  mkGLeg(-1.6,-2.0); mkGLeg(1.6,-2.0);
+  mkGLeg(-1.6, 2.0); mkGLeg(1.6, 2.0);
+
+  root.position.set(GLAC_X, GLAC_BASE_Y, GLAC_Z);
+  root.visible = false;
+  scene.add(root);
+  return { root, wingGLP, wingGRP, eyeMatGL, eyeMatGR };
+}
+const glaciusParts = buildGlacius();
+const glacius = {
+  mesh:      glaciusParts.root,
+  wingGLP:   glaciusParts.wingGLP,
+  wingGRP:   glaciusParts.wingGRP,
+  pos:       new THREE.Vector3(GLAC_X, GLAC_BASE_Y, GLAC_Z),
+  angle:     0,
+  hp:        6,
+  alive:     false,
+  hitFlash:  0,
+  exploding: false,
+  explodeParticles: [],
+  explodeAge: 0,
+  attackTimer: 3.0,
+};
 
 // ═══════════════════════════════════════════════════════════
 //  SWORD  (on the ground near the hill)
@@ -738,6 +1017,29 @@ function hitPlayer() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  ICE SHARDS  (level 2 projectiles from Glacius)
+// ═══════════════════════════════════════════════════════════
+const iceShards = [];
+const IS_SPEED = 10;
+function spawnIceShard() {
+  const sp = new THREE.Vector3(
+    glacius.pos.x - Math.sin(glacius.angle)*3,
+    glacius.pos.y + 3.5,
+    glacius.pos.z - Math.cos(glacius.angle)*3
+  );
+  const dir = new THREE.Vector3(
+    ps.pos.x - sp.x, (ps.pos.y+1.5) - sp.y, ps.pos.z - sp.z
+  ).normalize();
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.45, 0.75, 0.45),
+    new THREE.MeshLambertMaterial({ color:0x80d8f0, emissive:new THREE.Color(0x00aaff), emissiveIntensity:1.3 })
+  );
+  mesh.position.copy(sp);
+  scene.add(mesh);
+  iceShards.push({ mesh, pos: sp.clone(), vel: dir.clone().multiplyScalar(IS_SPEED), age:0 });
+}
+
+// ═══════════════════════════════════════════════════════════
 //  FIREBALLS
 // ═══════════════════════════════════════════════════════════
 const fireballs = [];
@@ -832,6 +1134,18 @@ function animate() {
     }
   }
 
+  // ── Ice temple wall collision (same footprint as Ignaroth's temple) ──
+  if (currentLevel === 2) {
+    const tx2 = ps.pos.x - GLAC_X, tz2 = ps.pos.z - GLAC_Z;
+    const M2 = 0.5, IW = 16, ID = 14;
+    if (tx2 > -IW && tx2 < IW && tz2 > -ID && tz2 < ID) {
+      if (tx2 >  IW - M2) ps.pos.x = GLAC_X + IW - M2;
+      if (tz2 < -ID + M2) ps.pos.z = GLAC_Z - ID + M2;
+      if (tz2 >  ID - M2) ps.pos.z = GLAC_Z + ID - M2;
+      if (tx2 < -IW + M2 && Math.abs(tz2) > 5.5) ps.pos.x = GLAC_X - IW + M2;
+    }
+  }
+
   // ── Jump & gravity ──
   if (!victory.active && (keys['Space'] || keys['KeyE']) && ps.onGround) {
     ps.velY = JUMP_VEL; ps.onGround = false;
@@ -880,6 +1194,9 @@ function animate() {
   // ── Camera follow ──
   const dxC = ps.pos.x - DRAG_X, dzC = ps.pos.z - DRAG_Z;
   const inTemple = Math.sqrt(dxC*dxC + dzC*dzC) < TEMPLE_COMBAT_DIST;
+  const dxI = ps.pos.x - GLAC_X, dzI = ps.pos.z - GLAC_Z;
+  const inIceTemple = currentLevel === 2 && !glacius.exploding &&
+                      Math.sqrt(dxI*dxI + dzI*dzI) < ICE_COMBAT_DIST;
   if (victory.active) {
     // ── Victory cinematic: character on hilltop, heroic low-angle shot ──
     victory.timer += dt;
@@ -907,7 +1224,20 @@ function animate() {
     const armT = Math.min(victory.timer / 0.6, 1.0);
     armRP.rotation.x = -2.7 * armT;
     armLP.rotation.x = -2.1 * armT;
-  } else if (inTemple) {
+
+    // Level 1 → Level 2 transition (only from dragon victory, not Glacius victory)
+    if (currentLevel === 1) {
+      if (victory.timer > 4.5 && victory.timer < 7.0) {
+        levelTransEl.style.display = 'block';
+        levelTransEl.innerHTML = 'THE EMBER WASTES GROW COLD...'
+          + '<span class="sub">❄ A NEW EVIL AWAKENS ❄</span>';
+      }
+      if (victory.timer >= 7.0 && !level2StartedFlag) {
+        level2StartedFlag = true;
+        startLevel2();
+      }
+    }
+  } else if (inTemple || inIceTemple) {
     // First-person: hide George, put camera at eye level facing player direction
     georgeRoot.visible = false;
     camera.position.set(ps.pos.x, ps.pos.y + 1.6, ps.pos.z);
@@ -1017,6 +1347,29 @@ function animate() {
         }
       }
 
+      // Penguins (level 2)
+      if (!swing.hitRegistered) {
+        for (let pi = penguinList.length - 1; pi >= 0; pi--) {
+          const pg = penguinList[pi];
+          if (!pg.mesh.visible) continue;
+          if (ps.pos.distanceTo(pg.pos) < 5) {
+            _toDragon.subVectors(pg.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
+            if (_toDragon.dot(_gFwd) > 0.4) {
+              scene.remove(pg.mesh); penguinList.splice(pi, 1);
+              addScore(1); swing.hitRegistered = true; break;
+            }
+          }
+        }
+      }
+
+      // Glacius
+      if (!swing.hitRegistered && glacius.alive) {
+        if (ps.pos.distanceTo(glacius.pos) < 8) {
+          _toDragon.subVectors(glacius.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
+          if (_toDragon.dot(_gFwd) > 0.35) { hitGlacius(); swing.hitRegistered = true; }
+        }
+      }
+
       // Dragon
       if (!swing.hitRegistered && dragon.alive) {
         const distToDragon = ps.pos.distanceTo(dragon.pos);
@@ -1090,6 +1443,117 @@ function animate() {
     k.mesh.position.copy(k.pos);
     k.mesh.rotation.y = k.angle;
   });
+
+  // ────────────────────────────────────────────────────────
+  //  PENGUIN AI  (level 2)
+  // ────────────────────────────────────────────────────────
+  penguinList.forEach(pg => {
+    if (!pg.mesh.visible) return;
+    pg.walkTimer -= dt;
+    if (pg.walkTimer <= 0) {
+      pg.walking = Math.random() < 0.7;
+      pg.angle   = Math.random() * Math.PI * 2;
+      pg.walkTimer = pg.walking ? (2+Math.random()*3) : (0.8+Math.random()*1.5);
+    }
+    if (pg.walking) {
+      pg.pos.x -= Math.sin(pg.angle) * 1.0 * dt;
+      pg.pos.z -= Math.cos(pg.angle) * 1.0 * dt;
+      pg.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, pg.pos.x));
+      pg.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, pg.pos.z));
+      pg.walkCycle += dt * 5;
+      const pw = Math.sin(pg.walkCycle) * 0.28;
+      pg.flL.rotation.x =  pw; pg.flR.rotation.x = -pw;
+    }
+    pg.pos.y = getTerrainHeight(pg.pos.x, pg.pos.z);
+    pg.mesh.position.copy(pg.pos);
+    pg.mesh.rotation.y = pg.angle;
+  });
+
+  // ────────────────────────────────────────────────────────
+  //  GLACIUS — animation & AI  (level 2)
+  // ────────────────────────────────────────────────────────
+  if (glacius.alive && !glacius.exploding) {
+    const gt = now * 0.001;
+    glacius.pos.y = GLAC_BASE_Y + Math.sin(gt * 1.6) * 0.6;
+    glacius.mesh.position.y = glacius.pos.y;
+    const gFlap = Math.sin(gt * 3.2) * 0.45;
+    glacius.wingGLP.rotation.z =  gFlap;
+    glacius.wingGRP.rotation.z = -gFlap;
+    const gDx = ps.pos.x - GLAC_X, gDz = ps.pos.z - GLAC_Z;
+    const gDist = Math.sqrt(gDx*gDx + gDz*gDz);
+    if (gDist < 45) {
+      const wantA = Math.atan2(gDx, gDz);
+      let gdiff = wantA - glacius.angle;
+      while (gdiff >  Math.PI) gdiff -= 2*Math.PI;
+      while (gdiff < -Math.PI) gdiff += 2*Math.PI;
+      glacius.angle += gdiff * Math.min(dt * 1.4, 1);
+    }
+    glacius.mesh.rotation.y = glacius.angle;
+    if (glacius.hitFlash > 0) {
+      glacius.hitFlash -= dt;
+      const f = Math.max(0, glacius.hitFlash) / 0.25;
+      glaciusParts.eyeMatGL.emissiveIntensity = 1.3 + f * 2;
+      glaciusParts.eyeMatGR.emissiveIntensity = 1.3 + f * 2;
+    }
+    if (gDist < ICE_COMBAT_DIST) {
+      glacius.attackTimer -= dt;
+      if (glacius.attackTimer <= 0) {
+        spawnIceShard();
+        glacius.attackTimer = 3.0 + Math.random() * 1.5;
+      }
+    } else {
+      glacius.attackTimer = Math.max(glacius.attackTimer, 1.5);
+    }
+  }
+
+  // Glacius explosion particles
+  if (glacius.exploding) {
+    glacius.explodeAge += dt;
+    glacius.explodeParticles.forEach(p => {
+      p.age += dt;
+      p.vel.y -= 18 * dt;
+      p.mesh.position.x += p.vel.x * dt;
+      p.mesh.position.y += p.vel.y * dt;
+      p.mesh.position.z += p.vel.z * dt;
+      p.mesh.rotation.x += dt * 3;
+      p.mesh.rotation.z += dt * 2;
+      p.mesh.material.opacity = 1 - p.age / 2.0;
+      p.mesh.material.transparent = true;
+    });
+    if (glacius.explodeAge > 2.0) {
+      glacius.explodeParticles.forEach(p => scene.remove(p.mesh));
+      glacius.explodeParticles = [];
+      glacius.exploding = false;
+    }
+  }
+
+  // Ice shard update
+  for (let i = iceShards.length - 1; i >= 0; i--) {
+    const sh = iceShards[i];
+    sh.age += dt;
+    sh.pos.x += sh.vel.x * dt;
+    sh.pos.y += sh.vel.y * dt;
+    sh.pos.z += sh.vel.z * dt;
+    sh.mesh.position.copy(sh.pos);
+    sh.mesh.rotation.x += dt * 5;
+    sh.mesh.rotation.z += dt * 4;
+    if (sh.pos.distanceTo(ps.pos) < 1.8) {
+      hitPlayer(); scene.remove(sh.mesh); iceShards.splice(i, 1); continue;
+    }
+    if (sh.age > 5 || sh.pos.y < getTerrainHeight(sh.pos.x, sh.pos.z) - 0.5) {
+      scene.remove(sh.mesh); iceShards.splice(i, 1);
+    }
+  }
+
+  // Level 2 HUD: ice temple hint + Glacius HP bar
+  if (currentLevel === 2 && glacius.alive) {
+    const gDxH = ps.pos.x - GLAC_X, gDzH = ps.pos.z - GLAC_Z;
+    const gDistH = Math.sqrt(gDxH*gDxH + gDzH*gDzH);
+    iceHintEl.style.display    = (gDistH > ICE_COMBAT_DIST && gDistH < 45) ? 'block' : 'none';
+    glaciusHudEl.style.display = gDistH < ICE_COMBAT_DIST ? 'block' : 'none';
+  } else {
+    iceHintEl.style.display = 'none';
+  }
 
   // ────────────────────────────────────────────────────────
   //  IGNAROTH — animation & AI
@@ -1229,6 +1693,85 @@ function hitDragon() {
     victory.active = true;
     victory.timer  = 0;
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HIT GLACIUS
+// ═══════════════════════════════════════════════════════════
+function updateGlaciusHpBar() {
+  document.getElementById('glacius-hp-fill').style.width = (glacius.hp / 6 * 100) + '%';
+}
+
+function spawnGlaciusExplosion() {
+  const colors = [0x80d8f0, 0x00aaff, 0xaaddff, 0xffffff, 0x0055cc, 0x44aaee];
+  for (let i = 0; i < 22; i++) {
+    const s = 0.3 + Math.random()*0.9;
+    const p = mkBox(s,s,s, colors[Math.floor(Math.random()*colors.length)]);
+    p.position.copy(glacius.pos).add(new THREE.Vector3(
+      (Math.random()-0.5)*3, Math.random()*2, (Math.random()-0.5)*3
+    ));
+    const vel = new THREE.Vector3(
+      (Math.random()-0.5)*14, 4+Math.random()*10, (Math.random()-0.5)*14
+    );
+    scene.add(p);
+    glacius.explodeParticles.push({ mesh:p, vel, age:0 });
+  }
+}
+
+function hitGlacius() {
+  glacius.hp--;
+  glacius.hitFlash = 0.25;
+  flashHitOverlay();
+  updateGlaciusHpBar();
+  if (glacius.hp <= 0) {
+    glacius.alive = false;
+    glacius.mesh.visible = false;
+    glacius.exploding = true;
+    spawnGlaciusExplosion();
+    addScore(15);
+    document.getElementById('glacius-victory-msg').style.display = 'block';
+    document.getElementById('glacius-hud').style.display = 'none';
+    // Reuse hilltop victory cinematic
+    victoryMsgEl.style.display = 'none'; // hide old Ignaroth message
+    victory.active = true;
+    victory.timer  = 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  START LEVEL 2
+// ═══════════════════════════════════════════════════════════
+const iceHintEl    = document.getElementById('ice-temple-hint');
+const glaciusHudEl = document.getElementById('glacius-hud');
+const levelTransEl = document.getElementById('level-transition');
+
+function startLevel2() {
+  currentLevel = 2;
+  // Freeze the world
+  scene.background = new THREE.Color(0x7ab0cc);
+  scene.fog.color.set(0x7ab0cc);
+  terrain.material.color.set(0xd4eef8);
+  sun.color.set(0xc8e8f8);
+  sun.intensity = 0.7;
+  // Show ice temple, mural, Glacius, penguins
+  iceTempleGroup.visible = true;
+  iceMuralPlane.visible  = true;
+  glacius.mesh.visible   = true;
+  glacius.alive          = true;
+  penguinList.forEach(p => { p.mesh.visible = true; });
+  // Move player to just outside ice temple entrance (west side)
+  const startX = GLAC_X - 28, startZ = GLAC_Z;
+  ps.pos.set(startX, getTerrainHeight(startX, startZ), startZ);
+  ps.velY = 0; ps.onGround = true;
+  ps.angle = 0; // face east toward ice temple entrance
+  ps.hp = ps.maxHp; ps.invincible = 2;
+  updatePlayerHp();
+  // UI
+  victoryMsgEl.style.display  = 'none';
+  levelTransEl.style.display  = 'none';
+  updateGlaciusHpBar();
+  // Re-enable movement
+  victory.active = false;
 }
 
 animate();
