@@ -1,1780 +1,2041 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>World of Craft — Play</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #87ceeb; }
-    canvas { display: block; }
-
-    #back-btn {
-      position: fixed; top: 14px; left: 14px;
-      padding: 8px 18px;
-      background: rgba(0,0,0,0.55); color: #ffd700;
-      border: 1px solid #ffd700;
-      font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 2px;
-      cursor: pointer; text-decoration: none; pointer-events: all;
-      transition: background 0.2s; z-index: 200;
-    }
-    #back-btn:hover { background: rgba(255,215,0,0.15); }
-
-    #game-title {
-      position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
-      font-family: 'Cinzel', serif; font-size: 1.1rem; letter-spacing: 4px;
-      color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.8); pointer-events: none; z-index: 200;
-    }
-
-    /* Dragon HP */
-    #dragon-hud {
-      display: none;
-      position: fixed; top: 55px; left: 50%; transform: translateX(-50%);
-      text-align: center; pointer-events: none; z-index: 200;
-    }
-    #dragon-label {
-      font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 3px;
-      color: #ff5500; text-shadow: 0 0 10px #ff2200; margin-bottom: 4px;
-    }
-    #hp-bar {
-      width: 220px; height: 14px;
-      background: #1a0000; border: 2px solid #661100; border-radius: 2px;
-    }
-    #hp-fill {
-      height: 100%; width: 100%;
-      background: linear-gradient(90deg, #ff3300, #ff6600);
-      transition: width 0.25s ease;
-    }
-
-    /* Sword HUD */
-    #sword-hud {
-      display: none;
-      position: fixed; bottom: 50px; left: 20px;
-      font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 2px;
-      color: #ffe060; text-shadow: 0 0 10px #ffaa00;
-      pointer-events: none; z-index: 200;
-      background: rgba(0,0,0,0.45); padding: 6px 14px; border: 1px solid #996600;
-    }
-
-    /* Pickup hint */
-    #pickup-hint {
-      display: none;
-      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
-      font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px;
-      color: #fff; text-shadow: 0 0 8px #ffaa00;
-      background: rgba(0,0,0,0.5); padding: 6px 16px; border: 1px solid #886600;
-      pointer-events: none; z-index: 200;
-    }
-
-    /* Victory */
-    #victory-msg {
-      display: none;
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-      font-family: 'Cinzel', serif; font-size: clamp(1.5rem, 5vw, 3rem);
-      letter-spacing: 4px; color: #ffd700;
-      text-shadow: 0 0 30px #ff6600, 0 0 60px #ff3300;
-      text-align: center; pointer-events: none; z-index: 300;
-      animation: victoryPulse 1s ease-in-out infinite alternate;
-    }
-    @keyframes victoryPulse {
-      from { filter: brightness(1); }
-      to   { filter: brightness(1.4); }
-    }
-    #victory-msg .sub {
-      display: block; font-size: 0.5em; margin-top: 10px;
-      color: #ffa060; letter-spacing: 3px;
-    }
-
-    /* Hit flash overlay */
-    #hit-flash {
-      position: fixed; inset: 0; pointer-events: none; z-index: 250;
-      background: rgba(255,50,0,0); transition: background 0.05s;
-    }
-
-    #controls-hint {
-      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
-      font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 2px;
-      color: rgba(255,255,255,0.8); text-shadow: 0 1px 4px rgba(0,0,0,0.9);
-      white-space: nowrap; pointer-events: none; z-index: 200;
-    }
-
-    /* Score */
-    #score-hud {
-      position: fixed; top: 18px; right: 20px;
-      font-family: 'Cinzel', serif; font-size: 0.9rem; letter-spacing: 2px;
-      color: #ffd700; text-shadow: 0 0 8px #aa6600;
-      background: rgba(0,0,0,0.45); padding: 6px 14px; border: 1px solid #996600;
-      pointer-events: none; z-index: 200;
-    }
-
-    /* Player HP */
-    #player-hp {
-      position: fixed; bottom: 50px; right: 20px;
-      font-family: 'Cinzel', serif; font-size: 1.3rem; letter-spacing: 4px;
-      color: #ff4444; text-shadow: 0 0 8px #ff0000;
-      pointer-events: none; z-index: 200;
-      background: rgba(0,0,0,0.45); padding: 6px 14px; border: 1px solid #882222;
-    }
-
-    /* Temple approach hint */
-    #temple-hint {
-      display: none;
-      position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
-      font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px;
-      color: #ff8844; text-shadow: 0 0 8px #ff4400;
-      background: rgba(0,0,0,0.5); padding: 6px 16px; border: 1px solid #882200;
-      pointer-events: none; z-index: 200;
-    }
-
-    /* Glacius HP */
-    #glacius-hud {
-      display: none;
-      position: fixed; top: 55px; left: 50%; transform: translateX(-50%);
-      text-align: center; pointer-events: none; z-index: 200;
-    }
-    #glacius-label {
-      font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 3px;
-      color: #80d8f0; text-shadow: 0 0 10px #00aaff; margin-bottom: 4px;
-    }
-    #glacius-hp-bar {
-      width: 220px; height: 14px;
-      background: #001a2a; border: 2px solid #1166aa; border-radius: 2px;
-    }
-    #glacius-hp-fill {
-      height: 100%; width: 100%;
-      background: linear-gradient(90deg, #0088cc, #80d8f0);
-      transition: width 0.25s ease;
-    }
-
-    /* Ice temple hint */
-    #ice-temple-hint {
-      display: none;
-      position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
-      font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px;
-      color: #80d8f0; text-shadow: 0 0 8px #00aaff;
-      background: rgba(0,20,40,0.6); padding: 6px 16px; border: 1px solid #1166aa;
-      pointer-events: none; z-index: 200;
-    }
-
-    /* Level transition overlay */
-    #level-transition {
-      display: none;
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-      font-family: 'Cinzel', serif; font-size: clamp(1rem, 3vw, 2rem);
-      letter-spacing: 4px; color: #80d8f0;
-      text-shadow: 0 0 30px #00aaff, 0 0 60px #0044aa;
-      text-align: center; pointer-events: none; z-index: 400;
-      animation: victoryPulse 1s ease-in-out infinite alternate;
-    }
-    #level-transition .sub {
-      display: block; font-size: 0.5em; margin-top: 10px;
-      color: #aaddff; letter-spacing: 3px;
-    }
-
-    /* Glacius victory */
-    #glacius-victory-msg {
-      display: none;
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-      font-family: 'Cinzel', serif; font-size: clamp(1.5rem, 5vw, 3rem);
-      letter-spacing: 4px; color: #80d8f0;
-      text-shadow: 0 0 30px #00aaff, 0 0 60px #003388;
-      text-align: center; pointer-events: none; z-index: 300;
-      animation: victoryPulse 1s ease-in-out infinite alternate;
-    }
-    #glacius-victory-msg .sub {
-      display: block; font-size: 0.5em; margin-top: 10px;
-      color: #aaddff; letter-spacing: 3px;
-    }
-
-    /* Game over */
-    #game-over {
-      display: none;
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-      font-family: 'Cinzel', serif; font-size: clamp(1.5rem, 5vw, 3rem);
-      letter-spacing: 4px; color: #cc0000;
-      text-shadow: 0 0 30px #ff0000, 0 0 60px #880000;
-      text-align: center; pointer-events: none; z-index: 300;
-    }
-    #game-over .sub {
-      display: block; font-size: 0.45em; margin-top: 10px;
-      color: #ff6060; letter-spacing: 3px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World of Craft — Play</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #87ceeb;
+        }
+        canvas {
+            display: block;
+        }
+        #back-btn {
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            padding: 8px 18px;
+            background: rgba(0,0,0,0.55);
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            font-family: 'Cinzel', serif;
+            font-size: 0.78rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            text-decoration: none;
+            pointer-events: all;
+            transition: background 0.2s;
+            z-index: 200;
+        }
+        #back-btn:hover {
+            background: rgba(255,215,0,0.15);
+        }
+        #game-title {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Cinzel', serif;
+            font-size: 1.1rem;
+            letter-spacing: 4px;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 200;
+        }
+        #dragon-hud {
+            display: none;
+            position: fixed;
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 200;
+        }
+        #dragon-label {
+            font-family: 'Cinzel', serif;
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            color: #ff5500;
+            text-shadow: 0 0 10px #ff2200;
+            margin-bottom: 4px;
+        }
+        #hp-bar {
+            width: 220px;
+            height: 14px;
+            background: #1a0000;
+            border: 2px solid #661100;
+            border-radius: 2px;
+        }
+        #hp-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff3300, #ff6600);
+            transition: width 0.25s ease;
+        }
+        #sword-hud {
+            display: none;
+            position: fixed;
+            bottom: 50px;
+            left: 20px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            color: #ffe060;
+            text-shadow: 0 0 10px #ffaa00;
+            pointer-events: none;
+            z-index: 200;
+            background: rgba(0,0,0,0.45);
+            padding: 6px 14px;
+            border: 1px solid #996600;
+        }
+        #pickup-hint {
+            display: none;
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Cinzel', serif;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 8px #ffaa00;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 16px;
+            border: 1px solid #886600;
+            pointer-events: none;
+            z-index: 200;
+        }
+        #victory-msg {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.5rem, 5vw, 3rem);
+            letter-spacing: 4px;
+            color: #ffd700;
+            text-shadow: 0 0 30px #ff6600, 0 0 60px #ff3300;
+            text-align: center;
+            pointer-events: none;
+            z-index: 300;
+            animation: victoryPulse 1s ease-in-out infinite alternate;
+        }
+        @keyframes victoryPulse {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.4); }
+        }
+        #victory-msg .sub {
+            display: block;
+            font-size: 0.5em;
+            margin-top: 10px;
+            color: #ffa060;
+            letter-spacing: 3px;
+        }
+        #hit-flash {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 250;
+            background: rgba(255,50,0,0);
+            transition: background 0.05s;
+        }
+        #controls-hint {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Cinzel', serif;
+            font-size: 0.72rem;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 200;
+        }
+        #score-hud {
+            position: fixed;
+            top: 18px;
+            right: 20px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            color: #ffd700;
+            text-shadow: 0 0 8px #aa6600;
+            background: rgba(0,0,0,0.45);
+            padding: 6px 14px;
+            border: 1px solid #996600;
+            pointer-events: none;
+            z-index: 200;
+        }
+        #player-hp {
+            position: fixed;
+            bottom: 50px;
+            right: 20px;
+            font-family: 'Cinzel', serif;
+            font-size: 1.3rem;
+            letter-spacing: 4px;
+            color: #ff4444;
+            text-shadow: 0 0 8px #ff0000;
+            pointer-events: none;
+            z-index: 200;
+            background: rgba(0,0,0,0.45);
+            padding: 6px 14px;
+            border: 1px solid #882222;
+        }
+        #temple-hint {
+            display: none;
+            position: fixed;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Cinzel', serif;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: #ff8844;
+            text-shadow: 0 0 8px #ff4400;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 16px;
+            border: 1px solid #882200;
+            pointer-events: none;
+            z-index: 200;
+        }
+        #glacius-hud {
+            display: none;
+            position: fixed;
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 200;
+        }
+        #glacius-label {
+            font-family: 'Cinzel', serif;
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            color: #80d8f0;
+            text-shadow: 0 0 10px #00aaff;
+            margin-bottom: 4px;
+        }
+        #glacius-hp-bar {
+            width: 220px;
+            height: 14px;
+            background: #001a2a;
+            border: 2px solid #1166aa;
+            border-radius: 2px;
+        }
+        #glacius-hp-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #0088cc, #80d8f0);
+            transition: width 0.25s ease;
+        }
+        #level-transition {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1rem, 3vw, 2rem);
+            letter-spacing: 4px;
+            color: #80d8f0;
+            text-shadow: 0 0 30px #00aaff, 0 0 60px #0044aa;
+            text-align: center;
+            pointer-events: none;
+            z-index: 400;
+            animation: victoryPulse 1s ease-in-out infinite alternate;
+        }
+        #level-transition .sub {
+            display: block;
+            font-size: 0.5em;
+            margin-top: 10px;
+            color: #aaddff;
+            letter-spacing: 3px;
+        }
+        #glacius-victory-msg {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.5rem, 5vw, 3rem);
+            letter-spacing: 4px;
+            color: #80d8f0;
+            text-shadow: 0 0 30px #00aaff, 0 0 60px #003388;
+            text-align: center;
+            pointer-events: none;
+            z-index: 300;
+            animation: victoryPulse 1s ease-in-out infinite alternate;
+        }
+        #glacius-victory-msg .sub {
+            display: block;
+            font-size: 0.5em;
+            margin-top: 10px;
+            color: #aaddff;
+            letter-spacing: 3px;
+        }
+        #game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.5rem, 5vw, 3rem);
+            letter-spacing: 4px;
+            color: #cc0000;
+            text-shadow: 0 0 30px #ff0000, 0 0 60px #880000;
+            text-align: center;
+            pointer-events: none;
+            z-index: 300;
+        }
+        #game-over .sub {
+            display: block;
+            font-size: 0.45em;
+            margin-top: 10px;
+            color: #ff6060;
+            letter-spacing: 3px;
+        }
+    </style>
 </head>
 <body>
-
-  <a href="index.html" id="back-btn">← BACK</a>
-  <div id="game-title">WORLD OF CRAFT</div>
-
-  <div id="dragon-hud">
-    <div id="dragon-label">🔥 IGNAROTH — THE FLAME KING</div>
-    <div id="hp-bar"><div id="hp-fill"></div></div>
-  </div>
-
-  <div id="sword-hud">⚔ SWORD EQUIPPED</div>
-  <div id="pickup-hint">⚔ Walk closer to pick up the sword!</div>
-  <div id="victory-msg">IGNAROTH DEFEATED!<span class="sub">The Ember Wastes are saved.</span></div>
-  <div id="hit-flash"></div>
-  <div id="player-hp">♥ ♥ ♥</div>
-  <div id="temple-hint">🔥 The Temple of Ignaroth lies ahead...</div>
-  <div id="ice-temple-hint">❄ The Ice Temple of Glacius lies ahead...</div>
-  <div id="glacius-hud">
-    <div id="glacius-label">❄ GLACIUS — THE FROZEN TERROR</div>
-    <div id="glacius-hp-bar"><div id="glacius-hp-fill"></div></div>
-  </div>
-  <div id="level-transition"></div>
-  <div id="glacius-victory-msg">GLACIUS DEFEATED!<span class="sub">The Frozen Wastes are free.</span></div>
-  <div id="game-over">YOU HAVE FALLEN<span class="sub">Refresh to try again.</span></div>
-  <div id="score-hud">SCORE: 0</div>
-  <div id="controls-hint">↑↓ Move &nbsp;·&nbsp; ←→ Turn &nbsp;·&nbsp; SPACE Jump &nbsp;·&nbsp; F Attack</div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script>'use strict';
-
-// ═══════════════════════════════════════════════════════════
-//  RENDERER + SCENE + CAMERA
-// ═══════════════════════════════════════════════════════════
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
-
-const scene = new THREE.Scene();
-const SKY = 0x9ecfe8;
-scene.background = new THREE.Color(SKY);
-scene.fog = new THREE.FogExp2(SKY, 0.007);
-
-const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 500);
-window.addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-// ═══════════════════════════════════════════════════════════
-//  LIGHTING
-// ═══════════════════════════════════════════════════════════
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-const sun = new THREE.DirectionalLight(0xfff5d0, 1.2);
-sun.position.set(60, 100, 40);
-sun.castShadow = true;
-Object.assign(sun.shadow.camera, { left:-130, right:130, top:130, bottom:-130, far:350 });
-sun.shadow.mapSize.set(2048, 2048);
-scene.add(sun);
-
-// ═══════════════════════════════════════════════════════════
-//  TERRAIN
-// ═══════════════════════════════════════════════════════════
-function getTerrainHeight(x, z) {
-  const hill = 14 * Math.exp(-(x*x + z*z) / (18*18));
-  const roll = 0.55 * Math.sin(x * 0.07) * Math.cos(z * 0.09);
-  return hill + roll;
-}
-
-// Terrain normal (for slope tilt)
-function getTerrainNormal(x, z) {
-  const d = 0.5;
-  const hL = getTerrainHeight(x - d, z), hR = getTerrainHeight(x + d, z);
-  const hF = getTerrainHeight(x, z - d), hB = getTerrainHeight(x, z + d);
-  return new THREE.Vector3(hL - hR, 2 * d, hF - hB).normalize();
-}
-
-const tGeo = new THREE.PlaneGeometry(240, 240, 100, 100);
-tGeo.rotateX(-Math.PI / 2);
-const tPos = tGeo.attributes.position;
-for (let i = 0; i < tPos.count; i++) {
-  tPos.setY(i, getTerrainHeight(tPos.getX(i), tPos.getZ(i)));
-}
-tGeo.computeVertexNormals();
-const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x4caf50 }));
-terrain.receiveShadow = true;
-scene.add(terrain);
-
-// ═══════════════════════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════════════════════
-function mkBox(w, h, d, color, px, py, pz) {
-  const m = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshLambertMaterial({ color })
-  );
-  if (px !== undefined) m.position.set(px, py, pz);
-  m.castShadow = true; m.receiveShadow = true;
-  return m;
-}
-
-// Cached objects for the game loop
-const _worldUp   = new THREE.Vector3(0, 1, 0);
-const _slopeQ    = new THREE.Quaternion();
-const _faceQ     = new THREE.Quaternion();
-const _yAxis     = new THREE.Vector3(0, 1, 0);
-const _eu        = new THREE.Euler();
-const _fwd       = new THREE.Vector3();
-const _cOff      = new THREE.Vector3();
-const _cTgt      = new THREE.Vector3();
-const _toDragon  = new THREE.Vector3();
-const _gFwd      = new THREE.Vector3();
-
-// ═══════════════════════════════════════════════════════════
-//  GEORGE
-// ═══════════════════════════════════════════════════════════
-const SKIN = 0xf5c98c, SHIRT = 0x2244cc, PANTS = 0x1a2a44, HAIR_C = 0x3a2010;
-const georgeRoot = new THREE.Group();
-scene.add(georgeRoot);
-
-georgeRoot.add(mkBox(0.78, 1.05, 0.42, SHIRT, 0, 1.275, 0));
-
-const headPivot = new THREE.Group();
-headPivot.position.set(0, 1.8, 0);
-headPivot.add(
-  mkBox(0.65, 0.65, 0.65, SKIN,    0,    0.325, 0),
-  mkBox(0.68, 0.22, 0.68, HAIR_C,  0,    0.76,  0),
-  mkBox(0.13, 0.11, 0.06, 0x1a1a55, -0.15, 0.31, -0.335),
-  mkBox(0.13, 0.11, 0.06, 0x1a1a55,  0.15, 0.31, -0.335)
-);
-georgeRoot.add(headPivot);
-
-const legLP = new THREE.Group(); legLP.position.set(-0.19, 0.75, 0);
-legLP.add(mkBox(0.29, 0.75, 0.29, PANTS, 0, -0.375, 0)); georgeRoot.add(legLP);
-
-const legRP = new THREE.Group(); legRP.position.set(0.19, 0.75, 0);
-legRP.add(mkBox(0.29, 0.75, 0.29, PANTS, 0, -0.375, 0)); georgeRoot.add(legRP);
-
-const armLP = new THREE.Group(); armLP.position.set(-0.51, 1.73, 0);
-armLP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0)); georgeRoot.add(armLP);
-
-const armRP = new THREE.Group(); armRP.position.set(0.51, 1.73, 0);
-armRP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0)); georgeRoot.add(armRP);
-
-// ── Player state ──
-const BOUNDARY = 100;
-const ps = {
-  pos: new THREE.Vector3(0, getTerrainHeight(0, 0), 0),
-  velY: 0, angle: 0, onGround: true, walkCycle: 0, moving: false,
-  hp: 3, maxHp: 3, invincible: 0, dead: false
-};
-const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
-const victory = { active: false, timer: 0 };
-let level2StartedFlag = false;
-
-// ═══════════════════════════════════════════════════════════
-//  TREES
-// ═══════════════════════════════════════════════════════════
-function placeTree(x, z) {
-  const y = getTerrainHeight(x, z);
-  scene.add(mkBox(0.55, 2.8, 0.55, 0x7a4f1e, x, y+1.4, z));
-  scene.add(mkBox(2.9, 2.9, 2.9, 0x2e7d32, x, y+4.2, z));
-  scene.add(mkBox(1.8, 1.8, 1.8, 0x388e3c, x, y+6.2, z));
-}
-[[-20,16],[12,-24],[-26,-6],[32,-18],[-32,22],[16,32],
- [-14,-32],[-38,-14],[6,38],[-6,-38],[-42,16],
- [24,-38],[-24,32],[48,-4],[-48,8],[30,44],[-30,-44],[10,18],[-16,-20]]
-.forEach(([x,z]) => placeTree(x,z));
-
-// ═══════════════════════════════════════════════════════════
-//  CLOUDS
-// ═══════════════════════════════════════════════════════════
-[[0,30],[40,-20],[-50,10],[20,60],[-30,-50],[60,40],[-60,-10],[10,-60]]
-.forEach(([cx,cz]) => {
-  const g = new THREE.Group();
-  g.add(mkBox(9,2.2,5,0xffffff,0,0,0),mkBox(6,2.8,4,0xf5f5f5,5.5,0.4,0),mkBox(5,2.4,3.5,0xf0f0f0,-5,0.2,0));
-  g.position.set(cx, 26+Math.random()*8, cz);
-  scene.add(g);
-});
-
-// Dragon / temple position — defined here so both sections can use it
-const DRAG_X = 65, DRAG_Z = 32;
-
-// ═══════════════════════════════════════════════════════════
-//  TEMPLE OF IGNAROTH
-// ═══════════════════════════════════════════════════════════
-const TEMPLE_Y = getTerrainHeight(DRAG_X, DRAG_Z);
-const TEMPLE_COMBAT_DIST = 20; // combat activates within this distance
-const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
-
-// ── Level 2: Glacius ──
-const GLAC_X = -55, GLAC_Z = -45;
-const ICE_TEMPLE_Y   = getTerrainHeight(GLAC_X, GLAC_Z);
-const GLAC_BASE_Y    = ICE_TEMPLE_Y + 4;
-const ICE_COMBAT_DIST = 20;
-let currentLevel = 1;
-
-(function buildTemple() {
-  const g = new THREE.Group();
-  // Bigger temple: W/D = half-extents, WH = first-story wall height
-  const W = 16, D = 14, WH = 9, WT = 1.8, EH = 5.5;
-
-  // ── Raised stone platform ──
-  g.add(mkBox((W+WT)*2+4, 0.9, (D+WT)*2+4, STONE_C, 0, -0.45, 0));
-
-  // ── First-story walls ──
-  g.add(mkBox(WT, WH, (D+WT)*2,   DARK_C,  W+WT/2,    WH/2, 0));           // east
-  g.add(mkBox((W+WT)*2, WH, WT,   DARK_C,  0,          WH/2, -(D+WT/2)));  // north
-  g.add(mkBox((W+WT)*2, WH, WT,   DARK_C,  0,          WH/2,  D+WT/2));    // south
-  const sl = D - EH;
-  g.add(mkBox(WT, WH, sl, DARK_C, -(W+WT/2), WH/2, -(EH+sl/2)));           // west-north
-  g.add(mkBox(WT, WH, sl, DARK_C, -(W+WT/2), WH/2,   EH+sl/2));            // west-south
-  g.add(mkBox(WT, WH-5, EH*2+2, DARK_C, -(W+WT/2), 5+(WH-5)/2, 0));       // lintel
-
-  // ── Second-story parapet (walls continue upward, thinner) ──
-  const WH2 = 5;
-  g.add(mkBox(WT, WH2, (D+WT)*2,   DARK_C,  W+WT/2,    WH+WH2/2, 0));
-  g.add(mkBox((W+WT)*2, WH2, WT,   DARK_C,  0,          WH+WH2/2, -(D+WT/2)));
-  g.add(mkBox((W+WT)*2, WH2, WT,   DARK_C,  0,          WH+WH2/2,  D+WT/2));
-  g.add(mkBox(WT, WH2, (D+WT)*2,   DARK_C, -(W+WT/2),  WH+WH2/2, 0));     // west solid (above entrance)
-
-  // ── Battlements (crenellations) on top of second story ──
-  const topY = WH + WH2;
-  const mBW = 2.4, mBH = 2.8, mBS = 4.2;
-  for (let mz = -(D+WT); mz <= D+WT; mz += mBS)
-    g.add(mkBox(WT+0.6, mBH, mBW, DARK_C, W+WT/2, topY+mBH/2, mz));
-  for (let mx = -(W+WT); mx <= W+WT; mx += mBS) {
-    g.add(mkBox(mBW, mBH, WT+0.6, DARK_C, mx, topY+mBH/2, -(D+WT/2)));
-    g.add(mkBox(mBW, mBH, WT+0.6, DARK_C, mx, topY+mBH/2,  D+WT/2));
-  }
-  for (let mz = -(D+WT); mz <= D+WT; mz += mBS)
-    g.add(mkBox(WT+0.6, mBH, mBW, DARK_C, -(W+WT/2), topY+mBH/2, mz));
-
-  // ── Corner towers (taller than parapet) ──
-  const tH = topY + 6;
-  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz]) => {
-    const tx = sx*(W+WT+2.0), tz = sz*(D+WT+2.0);
-    g.add(mkBox(5.5, tH, 5.5, LAVA_C, tx, tH/2, tz));
-    for (let b = -1; b <= 1; b += 2) {
-      g.add(mkBox(2.2, 3.2, 2.2, DARK_C, tx+b*1.5, tH+1.6, tz));
-      g.add(mkBox(2.2, 3.2, 2.2, DARK_C, tx, tH+1.6, tz+b*1.5));
-    }
-  });
-
-  // ── Dramatic entrance pillars ──
-  g.add(mkBox(3.2, WH+3, 3.2, LAVA_C, -(W+WT/2), (WH+3)/2, -(EH+1.6)));
-  g.add(mkBox(3.2, WH+3, 3.2, LAVA_C, -(W+WT/2), (WH+3)/2,   EH+1.6));
-
-  // ── Interior pillars (two rows supporting the upper parapet) ──
-  [[-W*0.5, -D*0.55],[-W*0.5, D*0.55],
-   [     0, -D*0.6 ],[     0, D*0.6  ],
-   [ W*0.5, -D*0.55],[ W*0.5, D*0.55]].forEach(([px,pz]) => {
-    g.add(mkBox(1.6, topY, 1.6, LAVA_C, px, topY/2, pz));
-  });
-
-  // ── Torches (8 of them) ──
-  function addTorch(lx, lz) {
-    g.add(mkBox(0.35, 1.1, 0.35, 0x3a2810, lx, 5.8, lz));
-    const fm = new THREE.Mesh(
-      new THREE.BoxGeometry(0.55, 0.55, 0.55),
-      new THREE.MeshLambertMaterial({ color:0xff7700, emissive:new THREE.Color(0xff3300), emissiveIntensity:1.4 })
-    );
-    fm.position.set(lx, 6.7, lz);
-    g.add(fm);
-    const pl = new THREE.PointLight(0xff5500, 2.2, 18);
-    pl.position.set(lx, 7.0, lz);
-    g.add(pl);
-  }
-  addTorch( W-1.8,  -(D-2));    // east-north
-  addTorch( W-1.8,   D-2);      // east-south
-  addTorch(-W+4,    -(D-2));    // west-north (inside)
-  addTorch(-W+4,     D-2);      // west-south (inside)
-  addTorch( 0,      -(D-1.5));  // north-center
-  addTorch( 0,       D-1.5);    // south-center
-  addTorch( W*0.4,   0);        // inner east center
-  addTorch(-W*0.3,   0);        // inner west center
-
-  // ── Lava pool at center (dragon hovers above it) ──
-  const lavaMat = new THREE.MeshLambertMaterial({
-    color:0xff2200, emissive:new THREE.Color(0xff1100), emissiveIntensity:0.9
-  });
-  const lavaPool = new THREE.Mesh(new THREE.BoxGeometry(10, 0.28, 10), lavaMat);
-  lavaPool.position.set(0, 0.14, 0);
-  g.add(lavaPool);
-  const lavaLight = new THREE.PointLight(0xff2200, 1.8, 28);
-  lavaLight.position.set(0, 1.5, 0);
-  g.add(lavaLight);
-
-  // (mural is built in world-space below, after the temple group is placed)
-
-  g.position.set(DRAG_X, TEMPLE_Y, DRAG_Z);
-  scene.add(g);
-})();
-
-// ═══════════════════════════════════════════════════════════
-//  DRAGON BATTLE MURAL  (world-space, east interior wall)
-// ═══════════════════════════════════════════════════════════
-(function buildMural() {
-  // Draw the dragon battle scene onto an HTML canvas, apply as a texture.
-  // A single PlaneGeometry + CanvasTexture — nothing to occlude, nothing to
-  // z-fight, guaranteed to render.
-  const CW = 960, CH = 640;
-  const cv = document.createElement('canvas');
-  cv.width = CW; cv.height = CH;
-  const ctx = cv.getContext('2d');
-
-  // Stone background
-  ctx.fillStyle = '#140a04';
-  ctx.fillRect(0, 0, CW, CH);
-
-  // Decorative border
-  ctx.strokeStyle = '#5a2a08';
-  ctx.lineWidth = 26;
-  ctx.strokeRect(13, 13, CW - 26, CH - 26);
-
-  // 12-col × 8-row pixel art dragon battle
-  // 1=red dragon  2=dark wing  3=fire orange  4=fire yellow
-  const pix = [
-    [1,1,0,0,0,0,0,0,0,0,1,1],
-    [1,2,1,0,0,3,3,0,0,1,2,1],
-    [2,1,1,0,3,4,4,3,0,1,1,2],
-    [1,1,2,3,4,4,4,4,3,2,1,1],
-    [0,1,1,3,4,4,4,4,3,1,1,0],
-    [0,1,2,3,3,4,4,3,3,2,1,0],
-    [0,0,1,0,3,3,3,3,0,1,0,0],
-    [0,0,1,0,0,3,3,0,0,1,0,0],
-  ];
-  const clr = { 1:'#ee1100', 2:'#991100', 3:'#ff7700', 4:'#ffee00' };
-  const PW = (CW - 80) / 12, PH = (CH - 100) / 8;
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 12; c++) {
-      const v = pix[r][c];
-      if (!v) continue;
-      ctx.fillStyle = clr[v];
-      ctx.fillRect(40 + c * PW + 3, 40 + r * PH + 3, PW - 6, PH - 6);
-    }
-  }
-
-  // Title banner at bottom
-  ctx.fillStyle = '#ffaa33';
-  ctx.font = 'bold 44px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('THE BATTLE OF IGNAROTH', CW / 2, CH - 30);
-
-  // Single plane on the east interior wall — -PI/2 makes front face point WEST toward player
-  const tex   = new THREE.CanvasTexture(cv);
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(26, 14),
-    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
-  );
-  // Interior face of east wall is at DRAG_X+16; place 0.5 units inside the room
-  plane.position.set(DRAG_X + 15.5, TEMPLE_Y + 7, DRAG_Z);
-  plane.rotation.y = -Math.PI / 2;  // front face points west (-X), toward the entrance
-  scene.add(plane);
-})();
-
-// ═══════════════════════════════════════════════════════════
-//  ICE TEMPLE OF GLACIUS  (hidden until level 2)
-// ═══════════════════════════════════════════════════════════
-const iceTempleGroup = (function buildIceTemple() {
-  const g = new THREE.Group();
-  const W = 16, D = 14, WH = 9, WT = 1.8, EH = 5.5;
-  const I1 = 0x8ec5d6, I2 = 0x4a8fa8, I3 = 0xcce5f0;
-
-  g.add(mkBox((W+WT)*2+4, 0.9, (D+WT)*2+4, I3, 0, -0.45, 0)); // platform
-  // Walls
-  g.add(mkBox(WT, WH, (D+WT)*2, I2,  W+WT/2,   WH/2, 0));         // east
-  g.add(mkBox((W+WT)*2, WH, WT, I2,  0,         WH/2, -(D+WT/2))); // north
-  g.add(mkBox((W+WT)*2, WH, WT, I2,  0,         WH/2,  D+WT/2));   // south
-  const sl = D - EH;
-  g.add(mkBox(WT, WH, sl, I2, -(W+WT/2), WH/2, -(EH+sl/2)));  // west-north
-  g.add(mkBox(WT, WH, sl, I2, -(W+WT/2), WH/2,  EH+sl/2));    // west-south
-  g.add(mkBox(WT, WH-5, EH*2+2, I2, -(W+WT/2), 5+(WH-5)/2, 0)); // lintel
-  // Interior ice pillars
-  [-8, 0, 8].forEach(z => {
-    g.add(mkBox(1.2, WH+1, 1.2, I3,  W-3, (WH+1)/2, z));
-    g.add(mkBox(1.2, WH+1, 1.2, I3, -(W-3),(WH+1)/2, z));
-  });
-  // Parapet
-  const WH2 = 4, topY = WH + WH2;
-  g.add(mkBox(WT, WH2, (D+WT)*2, I1,  W+WT/2,   WH+WH2/2, 0));
-  g.add(mkBox((W+WT)*2, WH2, WT, I1,  0,         WH+WH2/2, -(D+WT/2)));
-  g.add(mkBox((W+WT)*2, WH2, WT, I1,  0,         WH+WH2/2,  D+WT/2));
-  g.add(mkBox(WT, WH2, (D+WT)*2, I1, -(W+WT/2), WH+WH2/2, 0));
-  // Ice-spike crenellations
-  const mBS = 4.2, mBH = 2.4;
-  for (let mz = -(D+WT); mz <= D+WT; mz += mBS) {
-    g.add(mkBox(WT+0.4, mBH, 1.8, I3,  W+WT/2, topY+mBH/2, mz));
-    g.add(mkBox(WT+0.4, mBH, 1.8, I3, -(W+WT/2), topY+mBH/2, mz));
-  }
-  // Corner ice spires
-  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz]) => {
-    const tx = sx*(W+WT+2.0), tz = sz*(D+WT+2.0), tH = topY+7;
-    g.add(mkBox(5.0, tH, 5.0, I1, tx, tH/2, tz));
-    g.add(mkBox(2.8, 3.5, 2.8, I3, tx, tH+1.75, tz));
-  });
-  // Entrance pillars
-  g.add(mkBox(3.2, WH+3, 3.2, I3, -(W+WT/2), (WH+3)/2, -(EH+1.6)));
-  g.add(mkBox(3.2, WH+3, 3.2, I3, -(W+WT/2), (WH+3)/2,  EH+1.6));
-
-  g.position.set(GLAC_X, ICE_TEMPLE_Y, GLAC_Z);
-  g.visible = false;
-  scene.add(g);
-  return g;
-})();
-
-// Ice mural on east wall of ice temple (world-space, hidden until level 2)
-const iceMuralPlane = (function buildIceMural() {
-  const CW = 960, CH = 640;
-  const cv = document.createElement('canvas');
-  cv.width = CW; cv.height = CH;
-  const ctx = cv.getContext('2d');
-  ctx.fillStyle = '#020d1a';
-  ctx.fillRect(0, 0, CW, CH);
-  ctx.strokeStyle = '#1a6080';
-  ctx.lineWidth = 22;
-  ctx.strokeRect(11, 11, CW-22, CH-22);
-  // Pixel grid: 1=ice body  2=dark wing  3=light blue  4=white spike
-  const pix = [
-    [0,0,2,2,0,0,0,0,2,2,0,0],
-    [0,2,1,2,3,3,3,3,2,1,2,0],
-    [2,1,1,3,4,4,4,4,3,1,1,2],
-    [1,1,3,4,4,4,4,4,4,3,1,1],
-    [0,1,3,4,4,4,4,4,4,3,1,0],
-    [0,1,3,3,4,4,4,4,3,3,1,0],
-    [0,0,1,0,3,4,4,3,0,1,0,0],
-    [0,0,0,0,0,4,4,0,0,0,0,0],
-  ];
-  const clr = { 1:'#4a9ab8', 2:'#2a6080', 3:'#80d8f0', 4:'#e8f8ff' };
-  const PW = (CW-80)/12, PH = (CH-100)/8;
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 12; c++) {
-      const v = pix[r][c];
-      if (!v) continue;
-      ctx.fillStyle = clr[v];
-      ctx.fillRect(40 + c*PW+3, 40 + r*PH+3, PW-6, PH-6);
-    }
-  }
-  ctx.fillStyle = '#80d8f0';
-  ctx.font = 'bold 44px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('THE FROZEN TERROR', CW/2, CH-30);
-  const tex = new THREE.CanvasTexture(cv);
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(26, 14),
-    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
-  );
-  plane.position.set(GLAC_X + 15.5, ICE_TEMPLE_Y + 7, GLAC_Z);
-  plane.rotation.y = -Math.PI / 2;
-  plane.visible = false;
-  scene.add(plane);
-  return plane;
-})();
-
-// ═══════════════════════════════════════════════════════════
-//  SHEEP
-// ═══════════════════════════════════════════════════════════
-function createSheep(sx, sz) {
-  const root = new THREE.Group();
-  root.add(mkBox(1.15,0.78,0.7,0xf2efea,0,0.72,0));
-  root.add(mkBox(0.42,0.42,0.48,0xb0a898,0,0.88,-0.65));
-  root.add(mkBox(0.14,0.26,0.12,0xb0a898,-0.26,0.98,-0.65));
-  root.add(mkBox(0.14,0.26,0.12,0xb0a898, 0.26,0.98,-0.65));
-  root.add(mkBox(0.09,0.09,0.05,0x111111,-0.12,0.88,-0.9));
-  root.add(mkBox(0.09,0.09,0.05,0x111111, 0.12,0.88,-0.9));
-  function mkLegPiv(lx,lz){ const p=new THREE.Group(); p.position.set(lx,0.5,lz); p.add(mkBox(0.16,0.52,0.16,0x3a3330,0,-0.26,0)); root.add(p); return p; }
-  const legs = { fl:mkLegPiv(-0.33,-0.24), fr:mkLegPiv(0.33,-0.24), bl:mkLegPiv(-0.33,0.24), br:mkLegPiv(0.33,0.24) };
-  const sy = getTerrainHeight(sx,sz);
-  root.position.set(sx,sy,sz); scene.add(root);
-  return { mesh:root, pos:new THREE.Vector3(sx,sy,sz), angle:Math.random()*Math.PI*2,
-           speed:1.2+Math.random()*0.8, walkTimer:1+Math.random()*3, walking:true,
-           walkCycle:Math.random()*Math.PI*2, legs };
-}
-const sheepList = [[18,8],[-12,22],[10,-20],[-22,-12],[28,-16],[-6,30],[20,26]]
-  .map(([x,z]) => createSheep(x,z));
-
-// ═══════════════════════════════════════════════════════════
-//  KANGAROOS
-// ═══════════════════════════════════════════════════════════
-function createKangaroo(kx, kz) {
-  const C = 0xb8864e, D = 0x8b6532; // tan body / dark brown legs
-  const root = new THREE.Group();
-  root.add(mkBox(0.78, 1.1,  0.6,  C,  0,    1.0,   0));    // torso (upright)
-  root.add(mkBox(0.44, 0.48, 0.5,  C,  0,    1.85, -0.3));  // head (forward)
-  root.add(mkBox(0.1,  0.42, 0.08, C, -0.18, 2.16, -0.3));  // left ear
-  root.add(mkBox(0.1,  0.42, 0.08, C,  0.18, 2.16, -0.3));  // right ear
-  root.add(mkBox(0.22, 0.18, 0.14, D,  0,    1.74, -0.58)); // snout
-  root.add(mkBox(0.07, 0.07, 0.04, 0x111111, -0.13, 1.86, -0.58)); // eye L
-  root.add(mkBox(0.07, 0.07, 0.04, 0x111111,  0.13, 1.86, -0.58)); // eye R
-  root.add(mkBox(0.22, 0.22, 0.85, D,  0,    0.32,  0.52));  // tail
-  // Hind leg pivots (for hop animation)
-  function mkHLeg(lx) {
-    const p = new THREE.Group(); p.position.set(lx, 0.52, 0.1);
-    p.add(mkBox(0.25, 0.9, 0.25, D, 0, -0.45, 0)); root.add(p); return p;
-  }
-  const hlL = mkHLeg(-0.28), hlR = mkHLeg(0.28);
-  // Front arms
-  root.add(mkBox(0.17, 0.5, 0.17, C, -0.42, 1.38, -0.08));
-  root.add(mkBox(0.17, 0.5, 0.17, C,  0.42, 1.38, -0.08));
-
-  const ky = getTerrainHeight(kx, kz);
-  root.position.set(kx, ky, kz);
-  scene.add(root);
-  return { mesh: root, pos: new THREE.Vector3(kx, ky, kz),
-           angle: Math.random()*Math.PI*2, velY: 0, onGround: true,
-           hopTimer: Math.random()*2, walkCycle: 0, hlL, hlR };
-}
-const kangarooList = [[-30,10],[25,-30],[-15,-40],[40,-25],[-45,20],[15,40],[-35,-20],[30,30]]
-  .map(([x,z]) => createKangaroo(x,z));
-
-// ═══════════════════════════════════════════════════════════
-//  PENGUINS  (level 2 — hidden until startLevel2)
-// ═══════════════════════════════════════════════════════════
-function createPenguin(px, pz) {
-  const root = new THREE.Group();
-  const BLK = 0x111122, WHT = 0xf0f0f0, ORG = 0xff8800;
-  root.add(mkBox(0.52, 0.80, 0.42, BLK, 0, 0.55, 0));            // body
-  root.add(mkBox(0.30, 0.55, 0.10, WHT, 0, 0.55, -0.22));        // belly
-  root.add(mkBox(0.42, 0.38, 0.38, BLK, 0, 1.12, 0));            // head
-  root.add(mkBox(0.13, 0.10, 0.06, WHT,-0.13,1.17,-0.20));       // eye patch L
-  root.add(mkBox(0.13, 0.10, 0.06, WHT, 0.13,1.17,-0.20));       // eye patch R
-  root.add(mkBox(0.07, 0.07, 0.05, 0x000000,-0.13,1.17,-0.23));  // pupil L
-  root.add(mkBox(0.07, 0.07, 0.05, 0x000000, 0.13,1.17,-0.23));  // pupil R
-  root.add(mkBox(0.10, 0.07, 0.14, ORG, 0, 1.09,-0.24));         // beak
-  const flL = new THREE.Group(); flL.position.set(-0.35, 0.65, 0);
-  flL.add(mkBox(0.12, 0.48, 0.14, BLK, 0,-0.24, 0)); root.add(flL);
-  const flR = new THREE.Group(); flR.position.set( 0.35, 0.65, 0);
-  flR.add(mkBox(0.12, 0.48, 0.14, BLK, 0,-0.24, 0)); root.add(flR);
-  root.add(mkBox(0.16, 0.07, 0.22, ORG,-0.15, 0.08, 0.04));      // foot L
-  root.add(mkBox(0.16, 0.07, 0.22, ORG, 0.15, 0.08, 0.04));      // foot R
-  const py = getTerrainHeight(px, pz);
-  root.position.set(px, py, pz);
-  root.visible = false;
-  scene.add(root);
-  return { mesh: root, flL, flR,
-           pos: new THREE.Vector3(px, py, pz),
-           angle: Math.random()*Math.PI*2, walkCycle: 0,
-           walkTimer: Math.random()*3, walking: true };
-}
-const penguinList = [
-  [-45,-35],[-62,-30],[-40,-52],[-68,-46],[-52,-58],
-  [-36,-42],[-58,-62],[-72,-36],[-47,-68],[-33,-48]
-].map(([x,z]) => createPenguin(x,z));
-
-// ═══════════════════════════════════════════════════════════
-//  GLACIUS — THE FROZEN TERROR  (level 2 boss, hidden until startLevel2)
-// ═══════════════════════════════════════════════════════════
-function buildGlacius() {
-  const root = new THREE.Group();
-  const IB = 0x7fc4d8, IW = 0x4a96b8, IL = 0xd0eef8, IS = 0xe8f4fd;
-  root.add(mkBox(3.5,2.2,5.2, IB,  0, 1.1,  0));        // body
-  root.add(mkBox(3.8,0.5,5.4, IL,  0, 0.06, 0));        // ice belly
-  root.add(mkBox(1.4,2.0,1.6, IB,  0, 2.7,-2.8));       // neck
-  root.add(mkBox(2.1,1.7,2.4, 0x5aa0bc, 0, 3.5,-4.2));  // head
-  root.add(mkBox(1.3,0.8,1.6, 0x4a90ac, 0, 3.1,-5.4));  // snout
-  root.add(mkBox(0.22,0.15,0.12, 0xaaddee,-0.3,3.12,-6.18)); // nostril L
-  root.add(mkBox(0.22,0.15,0.12, 0xaaddee, 0.3,3.12,-6.18)); // nostril R
-  root.add(mkBox(0.28,1.8,0.28, IS,-0.65,4.9,-4.0));    // horn L
-  root.add(mkBox(0.28,1.8,0.28, IS, 0.65,4.9,-4.0));    // horn R
-  root.add(mkBox(0.2,1.1,0.2, IS,-0.3,4.6,-4.0));       // sub-spike L
-  root.add(mkBox(0.2,1.1,0.2, IS, 0.3,4.6,-4.0));       // sub-spike R
-  // Glowing ice eyes
-  const eyeMatGL = new THREE.MeshLambertMaterial({ color:0x00ccff, emissive:0x00aaff, emissiveIntensity:1.3 });
-  const eyeMatGR = eyeMatGL.clone();
-  const eyeGL = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatGL);
-  eyeGL.position.set(-0.58,3.52,-5.36); root.add(eyeGL);
-  const eyeGR = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatGR);
-  eyeGR.position.set( 0.58,3.52,-5.36); root.add(eyeGR);
-  // Tail
-  root.add(mkBox(2.0,1.6,2.5, IB,  0, 0.9, 3.0));
-  root.add(mkBox(1.2,1.1,2.8, 0x6ab0c8, 0, 0.55, 5.5));
-  root.add(mkBox(0.7,0.7,2.0, 0x5aa0b8, 0, 0.28, 7.8));
-  root.add(mkBox(0.35,0.35,0.9, IS, 0, 0.15, 9.5));    // ice tip
-  // Back spikes
-  [-0.8,0,0.8].forEach(ix => root.add(mkBox(0.22,1.5,0.22, IS, ix, 1.0+Math.abs(ix)*0.3, ix)));
-  // Wings
-  const wingGLP = new THREE.Group(); wingGLP.position.set(-1.75,2.0,0.5);
-  wingGLP.add(mkBox(3.6,0.2,2.6, IW,-1.8,0,0));
-  wingGLP.add(mkBox(2.5,0.18,2.2, 0x3a80a0,-5.1,0.1,0.4));
-  wingGLP.add(mkBox(1.2,0.15,1.5, 0x2a6080,-7.1,0.2,0.6));
-  root.add(wingGLP);
-  const wingGRP = new THREE.Group(); wingGRP.position.set(1.75,2.0,0.5);
-  wingGRP.add(mkBox(3.6,0.2,2.6, IW, 1.8,0,0));
-  wingGRP.add(mkBox(2.5,0.18,2.2, 0x3a80a0, 5.1,0.1,0.4));
-  wingGRP.add(mkBox(1.2,0.15,1.5, 0x2a6080, 7.1,0.2,0.6));
-  root.add(wingGRP);
-  // Legs
-  function mkGLeg(lx,lz) {
-    root.add(mkBox(0.65,1.3,0.65, IB,    lx,  0.3, lz));
-    root.add(mkBox(0.5, 1.3,0.5,  0x5a9ab0, lx*0.8,-1.1,lz+lx*0.05));
-    root.add(mkBox(0.7, 0.25,1.0, IS,   lx*0.8,-1.8,lz-0.3));
-  }
-  mkGLeg(-1.6,-2.0); mkGLeg(1.6,-2.0);
-  mkGLeg(-1.6, 2.0); mkGLeg(1.6, 2.0);
-
-  root.position.set(GLAC_X, GLAC_BASE_Y, GLAC_Z);
-  root.visible = false;
-  scene.add(root);
-  return { root, wingGLP, wingGRP, eyeMatGL, eyeMatGR };
-}
-const glaciusParts = buildGlacius();
-const glacius = {
-  mesh:      glaciusParts.root,
-  wingGLP:   glaciusParts.wingGLP,
-  wingGRP:   glaciusParts.wingGRP,
-  pos:       new THREE.Vector3(GLAC_X, GLAC_BASE_Y, GLAC_Z),
-  angle:     0,
-  hp:        6,
-  alive:     false,
-  hitFlash:  0,
-  exploding: false,
-  explodeParticles: [],
-  explodeAge: 0,
-  attackTimer: 3.0,
-};
-
-// ═══════════════════════════════════════════════════════════
-//  SWORD  (on the ground near the hill)
-// ═══════════════════════════════════════════════════════════
-const SWORD_POS = new THREE.Vector3(6, 0, -10);
-SWORD_POS.y = getTerrainHeight(SWORD_POS.x, SWORD_POS.z) + 0.6;
-
-// Ground sword mesh
-const groundSword = new THREE.Group();
-// Blade
-groundSword.add(mkBox(0.08, 1.2, 0.08, 0xdddddd,  0,  0,   0));
-// Guard
-groundSword.add(mkBox(0.55, 0.08, 0.08, 0xaaaa44, 0, -0.52, 0));
-// Handle
-groundSword.add(mkBox(0.09, 0.38, 0.09, 0x5a3a1e, 0, -0.8, 0));
-// Pommel
-groundSword.add(mkBox(0.16, 0.14, 0.16, 0x998833, 0, -1.02, 0));
-// Glow ring (to make it noticeable)
-const glowRing = mkBox(0.6, 0.6, 0.6, 0xffee44, 0, 0, 0);
-glowRing.material.transparent = true; glowRing.material.opacity = 0.18;
-groundSword.add(glowRing);
-
-groundSword.position.copy(SWORD_POS);
-groundSword.rotation.z = Math.PI / 2; // lie flat
-scene.add(groundSword);
-
-// Hand sword (attached to armRP when picked up)
-const handSword = new THREE.Group();
-handSword.add(mkBox(0.07, 1.0, 0.07, 0xdddddd,  0, -0.62, 0)); // blade down
-handSword.add(mkBox(0.5,  0.07, 0.07, 0xaaaa44, 0, -0.15, 0)); // guard
-handSword.add(mkBox(0.08, 0.3,  0.08, 0x5a3a1e, 0,  0.08, 0)); // handle
-handSword.position.set(0.05, -0.9, -0.1); // at end of right arm, pointing forward
-handSword.rotation.x = -0.2;
-handSword.visible = false;
-armRP.add(handSword);
-
-// ── First-person arm + sword viewmodel (shown inside temple) ──
-const fpArm = new THREE.Group();
-fpArm.add(mkBox(0.22, 0.55, 0.22, SHIRT,    0, -0.28,  0));   // forearm
-fpArm.add(mkBox(0.07, 0.95, 0.07, 0xdddddd, 0, -0.88, -0.05)); // blade
-fpArm.add(mkBox(0.44, 0.07, 0.07, 0xaaaa44, 0, -0.42,  0));   // guard
-fpArm.add(mkBox(0.09, 0.30, 0.09, 0x5a3a1e, 0, -0.27,  0));   // handle
-fpArm.visible = false;
-scene.add(fpArm);
-
-const sword = { pickedUp: false };
-
-// Swing state
-const swing = { active:false, timer:0, duration:0.5, hitRegistered:false, cooldown:0 };
-
-// ═══════════════════════════════════════════════════════════
-//  IGNAROTH — THE FLAME KING
-// ═══════════════════════════════════════════════════════════
-const DRAG_BASE_Y = getTerrainHeight(DRAG_X, DRAG_Z) + 4;
-
-function buildDragon() {
-  const root = new THREE.Group();
-  // ── Body (deep crimson) ──
-  root.add(mkBox(3.5, 2.2, 5.2, 0xaa1500,  0, 1.1,  0));
-  root.add(mkBox(3.8, 0.5, 5.4, 0xff4400,  0, 0.06, 0)); // underbelly
-  // ── Neck ──
-  root.add(mkBox(1.4, 2.0, 1.6, 0xaa1500,  0, 2.7, -2.8));
-  // ── Head ──
-  root.add(mkBox(2.1, 1.7, 2.4, 0xcc2200,  0, 3.5, -4.2));
-  // Snout
-  root.add(mkBox(1.3, 0.8, 1.6, 0xcc3300,  0, 3.1, -5.4));
-  // Nostrils (dark dots)
-  root.add(mkBox(0.22,0.15,0.12, 0x440000, -0.3, 3.12, -6.18));
-  root.add(mkBox(0.22,0.15,0.12, 0x440000,  0.3, 3.12, -6.18));
-  // Horns
-  root.add(mkBox(0.28, 1.5, 0.28, 0x550e00, -0.65, 4.8, -4.0));
-  root.add(mkBox(0.28, 1.5, 0.28, 0x550e00,  0.65, 4.8, -4.0));
-  // Glowing eyes (orange-yellow)
-  const eyeMatL = new THREE.MeshLambertMaterial({ color:0xff8800, emissive:0xff4400, emissiveIntensity:0.9 });
-  const eyeMatR = eyeMatL.clone();
-  const eyeL2 = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatL);
-  eyeL2.position.set(-0.58, 3.52, -5.36); eyeL2.castShadow=true; root.add(eyeL2);
-  const eyeR2 = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatR);
-  eyeR2.position.set( 0.58, 3.52, -5.36); eyeR2.castShadow=true; root.add(eyeR2);
-  // ── Tail ──
-  root.add(mkBox(2.0, 1.6, 2.5, 0xaa1500, 0, 0.9,  3.0));
-  root.add(mkBox(1.2, 1.1, 2.8, 0x991400, 0, 0.55, 5.5));
-  root.add(mkBox(0.7, 0.7, 2.0, 0x881200, 0, 0.28, 7.8));
-  root.add(mkBox(0.3, 0.3, 0.8, 0x771100, 0, 0.15, 9.5)); // tip
-  // ── Wings ──
-  const wingLP = new THREE.Group(); wingLP.position.set(-1.75, 2.0, 0.5);
-  wingLP.add(mkBox(3.6,0.2,2.6, 0x880000,-1.8,0,0));
-  wingLP.add(mkBox(2.5,0.18,2.2, 0x660000,-5.1,0.1,0.4));
-  wingLP.add(mkBox(1.2,0.15,1.5, 0x550000,-7.1,0.2,0.6));
-  root.add(wingLP);
-  const wingRP = new THREE.Group(); wingRP.position.set(1.75, 2.0, 0.5);
-  wingRP.add(mkBox(3.6,0.2,2.6, 0x880000, 1.8,0,0));
-  wingRP.add(mkBox(2.5,0.18,2.2, 0x660000, 5.1,0.1,0.4));
-  wingRP.add(mkBox(1.2,0.15,1.5, 0x550000, 7.1,0.2,0.6));
-  root.add(wingRP);
-  // ── Legs (4 legs with two segments) ──
-  function mkLeg(lx, lz) {
-    root.add(mkBox(0.65,1.3,0.65, 0x991400,  lx,   0.3,  lz));
-    root.add(mkBox(0.5, 1.3,0.5,  0x881200,  lx*0.8, -1.1, lz+lx*0.05));
-    root.add(mkBox(0.7, 0.25, 1.0, 0x771100, lx*0.8, -1.8, lz-0.3)); // foot
-  }
-  mkLeg(-1.6,-2.0); mkLeg(1.6,-2.0);
-  mkLeg(-1.6, 2.0); mkLeg(1.6, 2.0);
-
-  root.position.set(DRAG_X, DRAG_BASE_Y, DRAG_Z);
-  scene.add(root);
-  return { root, wingLP, wingRP, eyeMatL, eyeMatR };
-}
-
-const dragonParts = buildDragon();
-
-// Dragon state
-const dragon = {
-  mesh:      dragonParts.root,
-  wingLP:    dragonParts.wingLP,
-  wingRP:    dragonParts.wingRP,
-  pos:       new THREE.Vector3(DRAG_X, DRAG_BASE_Y, DRAG_Z),
-  angle:     0,
-  hp:        5,
-  alive:     true,
-  hitFlash:  0,
-  exploding: false,
-  explodeParticles: [],
-  explodeAge: 0,
-  attackTimer: 3.5,
-};
-
-function updateHpBar() {
-  document.getElementById('hp-fill').style.width = (dragon.hp / 5 * 100) + '%';
-}
-
-// ═══════════════════════════════════════════════════════════
-//  INPUT
-// ═══════════════════════════════════════════════════════════
-const keys = {};
-window.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
-  if (e.code === 'KeyF' && sword.pickedUp && !swing.active && swing.cooldown <= 0 && !victory.active) {
-    swing.active = true; swing.timer = 0; swing.hitRegistered = false;
-  }
-});
-window.addEventListener('keyup', e => { keys[e.code] = false; });
-
-// ═══════════════════════════════════════════════════════════
-//  INITIAL CAMERA
-// ═══════════════════════════════════════════════════════════
-{
-  const off = new THREE.Vector3(0, 5, 10).applyEuler(new THREE.Euler(0, ps.angle, 0));
-  camera.position.copy(ps.pos).add(off);
-  camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
-}
-
-// ═══════════════════════════════════════════════════════════
-//  HUD HELPERS
-// ═══════════════════════════════════════════════════════════
-const pickupHintEl  = document.getElementById('pickup-hint');
-const swordHudEl    = document.getElementById('sword-hud');
-const victoryMsgEl  = document.getElementById('victory-msg');
-const hitFlashEl    = document.getElementById('hit-flash');
-
-function flashHitOverlay() {
-  hitFlashEl.style.background = 'rgba(255,50,0,0.35)';
-  setTimeout(() => { hitFlashEl.style.background = 'rgba(255,50,0,0)'; }, 120);
-}
-
-const playerHpEl   = document.getElementById('player-hp');
-const templeHintEl = document.getElementById('temple-hint');
-const gameOverEl   = document.getElementById('game-over');
-const dragonHudEl  = document.getElementById('dragon-hud');
-const scoreEl      = document.getElementById('score-hud');
-let score = 0;
-function addScore(n) {
-  score += n;
-  scoreEl.textContent = 'SCORE: ' + score;
-}
-
-function updatePlayerHp() {
-  let s = '';
-  for (let i = 0; i < ps.maxHp; i++) s += (i < ps.hp ? '♥' : '♡') + ' ';
-  playerHpEl.textContent = s.trim();
-}
-
-function hitPlayer() {
-  if (ps.invincible > 0 || ps.dead) return;
-  ps.hp--;
-  ps.invincible = 1.5;
-  hitFlashEl.style.background = 'rgba(255,0,0,0.55)';
-  setTimeout(() => { hitFlashEl.style.background = 'rgba(255,50,0,0)'; }, 250);
-  updatePlayerHp();
-  if (ps.hp <= 0) {
-    ps.dead = true;
-    gameOverEl.style.display = 'block';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  ICE SHARDS  (level 2 projectiles from Glacius)
-// ═══════════════════════════════════════════════════════════
-const iceShards = [];
-const IS_SPEED = 10;
-function spawnIceShard() {
-  const sp = new THREE.Vector3(
-    glacius.pos.x - Math.sin(glacius.angle)*3,
-    glacius.pos.y + 3.5,
-    glacius.pos.z - Math.cos(glacius.angle)*3
-  );
-  const dir = new THREE.Vector3(
-    ps.pos.x - sp.x, (ps.pos.y+1.5) - sp.y, ps.pos.z - sp.z
-  ).normalize();
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.45, 0.75, 0.45),
-    new THREE.MeshLambertMaterial({ color:0x80d8f0, emissive:new THREE.Color(0x00aaff), emissiveIntensity:1.3 })
-  );
-  mesh.position.copy(sp);
-  scene.add(mesh);
-  iceShards.push({ mesh, pos: sp.clone(), vel: dir.clone().multiplyScalar(IS_SPEED), age:0 });
-}
-
-// ═══════════════════════════════════════════════════════════
-//  FIREBALLS
-// ═══════════════════════════════════════════════════════════
-const fireballs = [];
-const FB_SPEED = 9;
-
-function spawnFireball() {
-  const spawnPos = new THREE.Vector3(
-    dragon.pos.x - Math.sin(dragon.angle) * 3,
-    dragon.pos.y + 3.5,
-    dragon.pos.z - Math.cos(dragon.angle) * 3
-  );
-  const dir = new THREE.Vector3(
-    ps.pos.x - spawnPos.x,
-    (ps.pos.y + 1.5) - spawnPos.y,
-    ps.pos.z - spawnPos.z
-  ).normalize();
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.6, 0.6, 0.6),
-    new THREE.MeshLambertMaterial({ color:0xff5500, emissive:new THREE.Color(0xff2200), emissiveIntensity:1.5 })
-  );
-  mesh.position.copy(spawnPos);
-  scene.add(mesh);
-  fireballs.push({ mesh, pos: spawnPos.clone(), vel: dir.clone().multiplyScalar(FB_SPEED), age: 0 });
-}
-
-// ═══════════════════════════════════════════════════════════
-//  EXPLOSION
-// ═══════════════════════════════════════════════════════════
-function spawnExplosion() {
-  const colors = [0xff3300,0xff6600,0xffaa00,0xffff00,0xffffff,0xff2200];
-  for (let i = 0; i < 22; i++) {
-    const s = 0.3 + Math.random() * 0.9;
-    const p = mkBox(s, s, s, colors[Math.floor(Math.random()*colors.length)]);
-    p.position.copy(dragon.pos).add(new THREE.Vector3(
-      (Math.random()-0.5)*3, Math.random()*2, (Math.random()-0.5)*3
-    ));
-    const vel = new THREE.Vector3(
-      (Math.random()-0.5)*14, 4+Math.random()*10, (Math.random()-0.5)*14
-    );
-    scene.add(p);
-    dragon.explodeParticles.push({ mesh:p, vel, age:0 });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  GAME LOOP
-// ═══════════════════════════════════════════════════════════
-let prevTime = performance.now();
-let groundSwordSpinTime = 0;
-
-function animate() {
-  requestAnimationFrame(animate);
-  const now = performance.now();
-  const dt  = Math.min((now - prevTime) / 1000, 0.05);
-  prevTime  = now;
-  groundSwordSpinTime += dt;
-  if (ps.dead) { renderer.render(scene, camera); return; }
-
-  // ────────────────────────────────────────────────────────
-  //  GEORGE — rotation & movement
-  // ────────────────────────────────────────────────────────
-  if (!victory.active) {
-    if (keys['ArrowLeft']  || keys['KeyA']) ps.angle += ROTATE_SPEED * dt;
-    if (keys['ArrowRight'] || keys['KeyD']) ps.angle -= ROTATE_SPEED * dt;
-  }
-
-  const mz = !victory.active
-    ? (keys['ArrowUp']   || keys['KeyW'] ? -1 : 0)
-    + (keys['ArrowDown'] || keys['KeyS'] ?  1 : 0)
-    : 0;
-  ps.moving = mz !== 0;
-  if (ps.moving) {
-    _eu.set(0, ps.angle, 0);
-    _fwd.set(0, 0, mz).applyEuler(_eu).normalize();
-    ps.pos.x += _fwd.x * MOVE_SPEED * dt;
-    ps.pos.z += _fwd.z * MOVE_SPEED * dt;
-    ps.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.x));
-    ps.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.z));
-  }
-
-  // ── Temple wall collision (W=16, D=14, entrance half-width=5.5 on west side) ──
-  {
-    const tx = ps.pos.x - DRAG_X, tz = ps.pos.z - DRAG_Z;
-    const M = 0.5;
-    // Only clamp when player is clearly inside the interior
-    if (tx > -16 && tx < 16 && tz > -14 && tz < 14) {
-      if (tx >  16 - M) ps.pos.x = DRAG_X + 16 - M;          // east wall
-      if (tz < -14 + M) ps.pos.z = DRAG_Z - 14 + M;          // north wall
-      if (tz >  14 - M) ps.pos.z = DRAG_Z + 14 - M;          // south wall
-      if (tx < -16 + M && Math.abs(tz) > 5.5)                 // west wall (solid, no entrance)
-        ps.pos.x = DRAG_X - 16 + M;
-    }
-  }
-
-  // ── Ice temple wall collision (same footprint as Ignaroth's temple) ──
-  if (currentLevel === 2) {
-    const tx2 = ps.pos.x - GLAC_X, tz2 = ps.pos.z - GLAC_Z;
-    const M2 = 0.5, IW = 16, ID = 14;
-    if (tx2 > -IW && tx2 < IW && tz2 > -ID && tz2 < ID) {
-      if (tx2 >  IW - M2) ps.pos.x = GLAC_X + IW - M2;
-      if (tz2 < -ID + M2) ps.pos.z = GLAC_Z - ID + M2;
-      if (tz2 >  ID - M2) ps.pos.z = GLAC_Z + ID - M2;
-      if (tx2 < -IW + M2 && Math.abs(tz2) > 5.5) ps.pos.x = GLAC_X - IW + M2;
-    }
-  }
-
-  // ── Jump & gravity ──
-  if (!victory.active && (keys['Space'] || keys['KeyE']) && ps.onGround) {
-    ps.velY = JUMP_VEL; ps.onGround = false;
-  }
-
-  const groundY = getTerrainHeight(ps.pos.x, ps.pos.z);
-
-  if (ps.onGround) {
-    // Stick to terrain — fixes slope stutter
-    ps.pos.y = groundY;
-    ps.velY  = 0;
-  } else {
-    ps.velY -= GRAVITY * dt;
-    ps.pos.y += ps.velY * dt;
-    if (ps.pos.y <= groundY) {
-      ps.pos.y = groundY; ps.velY = 0; ps.onGround = true;
-    }
-  }
-
-  // ── Sync George mesh + terrain tilt ──
-  georgeRoot.position.copy(ps.pos);
-
-  if (ps.onGround) {
-    // Tilt George to match terrain slope
-    const tn = getTerrainNormal(ps.pos.x, ps.pos.z);
-    _slopeQ.setFromUnitVectors(_worldUp, tn);
-    _faceQ.setFromAxisAngle(_yAxis, ps.angle);
-    georgeRoot.quaternion.multiplyQuaternions(_slopeQ, _faceQ);
-  } else {
-    georgeRoot.rotation.set(0, ps.angle, 0);
-  }
-
-  // ── Walk animation ──
-  if (ps.moving) ps.walkCycle += dt * 7;
-  const sw = Math.sin(ps.walkCycle);
-  legLP.rotation.x =  sw * 0.55;
-  legRP.rotation.x = -sw * 0.55;
-  headPivot.rotation.x = ps.moving ? Math.sin(ps.walkCycle * 2) * 0.04 : 0;
-
-  // Arm rotation (unless overridden by swing or victory)
-  if (!swing.active && !victory.active) {
-    armLP.rotation.x = -sw * 0.45;
-    armRP.rotation.x =  sw * 0.45;
-  }
-
-  // ── Camera follow ──
-  const dxC = ps.pos.x - DRAG_X, dzC = ps.pos.z - DRAG_Z;
-  const inTemple = Math.sqrt(dxC*dxC + dzC*dzC) < TEMPLE_COMBAT_DIST;
-  const dxI = ps.pos.x - GLAC_X, dzI = ps.pos.z - GLAC_Z;
-  const inIceTemple = currentLevel === 2 && !glacius.exploding &&
-                      Math.sqrt(dxI*dxI + dzI*dzI) < ICE_COMBAT_DIST;
-  if (victory.active) {
-    // ── Victory cinematic: character on hilltop, heroic low-angle shot ──
-    victory.timer += dt;
-    georgeRoot.visible = true;
-    fpArm.visible = false;
-
-    // First frame: teleport character to hilltop and snap camera into position
-    if (victory.timer <= dt + 0.01) {
-      const hillTop = getTerrainHeight(0, 0);
-      ps.pos.set(0, hillTop, 0);
-      ps.velY    = 0;
-      ps.onGround = true;
-      ps.angle   = Math.PI; // face south — directly toward the camera
-      // Heroic low-angle camera: south of hilltop, slightly below peak,
-      // looking up at the character against the open sky
-      camera.position.set(0, hillTop - 4, 22);
-    }
-
-    // Slow pull-back to reveal the full landscape around the hero
-    _cTgt.set(0, getTerrainHeight(0, 0) - 2, 30);
-    camera.position.lerp(_cTgt, 0.015);
-    camera.lookAt(0, getTerrainHeight(0, 0) + 5, 0); // aim at the raised sword tip
-
-    // Sword arm shoots up triumphantly
-    const armT = Math.min(victory.timer / 0.6, 1.0);
-    armRP.rotation.x = -2.7 * armT;
-    armLP.rotation.x = -2.1 * armT;
-
-    // Level 1 → Level 2 transition (only from dragon victory, not Glacius victory)
-    if (currentLevel === 1) {
-      if (victory.timer > 4.5 && victory.timer < 7.0) {
-        levelTransEl.style.display = 'block';
-        levelTransEl.innerHTML = 'THE EMBER WASTES GROW COLD...'
-          + '<span class="sub">❄ A NEW EVIL AWAKENS ❄</span>';
-      }
-      if (victory.timer >= 7.0 && !level2StartedFlag) {
-        level2StartedFlag = true;
-        startLevel2();
-      }
-    }
-  } else if (inTemple || inIceTemple) {
-    // First-person: hide George, put camera at eye level facing player direction
-    georgeRoot.visible = false;
-    camera.position.set(ps.pos.x, ps.pos.y + 1.6, ps.pos.z);
-    camera.lookAt(
-      ps.pos.x - Math.sin(ps.angle) * 10,
-      ps.pos.y + 1.6,
-      ps.pos.z - Math.cos(ps.angle) * 10
-    );
-    // FP arm viewmodel — lower-right of screen, animates with swing
-    if (sword.pickedUp) {
-      fpArm.visible = true;
-      const fpFwdX = -Math.sin(ps.angle), fpFwdZ = -Math.cos(ps.angle);
-      const fpRtX  =  Math.cos(ps.angle), fpRtZ  = -Math.sin(ps.angle);
-      fpArm.position.set(
-        camera.position.x + fpFwdX * 0.5 + fpRtX * 0.4,
-        camera.position.y - 0.26,
-        camera.position.z + fpFwdZ * 0.5 + fpRtZ * 0.4
-      );
-      fpArm.rotation.set(0, ps.angle, 0);
-      if (swing.active) {
-        const t = swing.timer / swing.duration;
-        let a;
-        if      (t < 0.25) a = -0.6 * (t / 0.25);
-        else if (t < 0.75) a = -0.6 + 2.4 * ((t - 0.25) / 0.5);
-        else               a =  1.8 * (1 - (t - 0.75) / 0.25);
-        fpArm.rotation.x = a;
-      } else {
-        fpArm.rotation.x = 0;
-      }
-    } else {
-      fpArm.visible = false;
-    }
-  } else {
-    georgeRoot.visible = true;
-    fpArm.visible = false;
-    _eu.set(0, ps.angle, 0);
-    _cOff.set(0, 5, 10).applyEuler(_eu);
-    _cTgt.copy(ps.pos).add(_cOff);
-    camera.position.lerp(_cTgt, 0.09);
-    camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
-  }
-
-  // ────────────────────────────────────────────────────────
-  //  SWORD — ground spin + pickup detection
-  // ────────────────────────────────────────────────────────
-  if (!sword.pickedUp) {
-    groundSword.rotation.y = groundSwordSpinTime * 1.2;
-    // Glinting bob
-    groundSword.position.y = SWORD_POS.y + Math.sin(groundSwordSpinTime * 2) * 0.12;
-
-    const dx = ps.pos.x - SWORD_POS.x, dz = ps.pos.z - SWORD_POS.z;
-    const distToSword = Math.sqrt(dx*dx + dz*dz);
-    pickupHintEl.style.display = distToSword < 6 ? 'block' : 'none';
-
-    if (distToSword < 2.5) {
-      // Pick up!
-      sword.pickedUp = true;
-      scene.remove(groundSword);
-      handSword.visible = true;
-      swordHudEl.style.display = 'block';
-      pickupHintEl.style.display = 'none';
-    }
-  }
-
-  // ────────────────────────────────────────────────────────
-  //  SWORD SWING ANIMATION
-  // ────────────────────────────────────────────────────────
-  if (swing.active) {
-    swing.timer += dt;
-    const t = swing.timer / swing.duration;
-
-    // Phase: 0→0.25 wind-back, 0.25→0.75 fast forward sweep, 0.75→1 return
-    let armAngle;
-    if      (t < 0.25) armAngle = -0.6 * (t / 0.25);
-    else if (t < 0.75) armAngle = -0.6 + 2.4 * ((t - 0.25) / 0.5);
-    else               armAngle = 1.8 * (1 - (t - 0.75) / 0.25);
-    armRP.rotation.x = armAngle;
-    armLP.rotation.x = sw * 0.3; // left arm still moves slightly
-
-    // Hit detection during forward sweep
-    if (!swing.hitRegistered && t > 0.25 && t < 0.78) {
-      _gFwd.set(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
-
-      // Sheep
-      for (let si = sheepList.length - 1; si >= 0; si--) {
-        const s = sheepList[si];
-        if (ps.pos.distanceTo(s.pos) < 5) {
-          _toDragon.subVectors(s.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
-          if (_toDragon.dot(_gFwd) > 0.4) {
-            scene.remove(s.mesh); sheepList.splice(si, 1);
-            addScore(1); swing.hitRegistered = true; break;
-          }
+    <a id="back-btn" href="index.html">[← BACK]</a>
+    <div id="game-title">WORLD OF CRAFT</div>
+    <div id="dragon-hud">
+        <div id="dragon-label">🔥 IGNAROTH — THE FLAME KING</div>
+        <div id="hp-bar"><div id="hp-fill"></div></div>
+    </div>
+    <div id="sword-hud">⚔ SWORD EQUIPPED</div>
+    <div id="pickup-hint">⚔ Walk closer to pick up the sword!</div>
+    <div id="temple-hint">🔥 The Temple of Ignaroth lies ahead...</div>
+    <div id="victory-msg">IGNAROTH DEFEATED!<span class="sub">The Ember Wastes are saved.</span></div>
+    <div id="glacius-hud">
+        <div id="glacius-label">❄ GLACIUS — THE FROZEN TERROR</div>
+        <div id="glacius-hp-bar"><div id="glacius-hp-fill"></div></div>
+    </div>
+    <div id="glacius-victory-msg">GLACIUS DEFEATED!<span class="sub">The Frozen Wastes are free.</span></div>
+    <div id="level-transition"></div>
+    <div id="game-over">YOU HAVE FALLEN<span class="sub">Press R to respawn at the battle</span></div>
+    <div id="hit-flash"></div>
+    <div id="score-hud">SCORE: 0</div>
+    <div id="player-hp">♥ ♥ ♥</div>
+    <div id="controls-hint">↑↓ Move  ·  ←→ Turn  ·  SPACE Jump  ·  F Attack  ·  R Respawn</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        'use strict';
+
+        // ═══════════════════════════════════════════════════════════
+        // RENDERER + SCENE + CAMERA
+        // ═══════════════════════════════════════════════════════════
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const scene = new THREE.Scene();
+        const SKY = 0x9ecfe8;
+        scene.background = new THREE.Color(SKY);
+        scene.fog = new THREE.FogExp2(SKY, 0.007);
+
+        const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 500);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // LIGHTING
+        // ═══════════════════════════════════════════════════════════
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+        const sun = new THREE.DirectionalLight(0xfff5d0, 1.2);
+        sun.position.set(60, 100, 40);
+        sun.castShadow = true;
+        Object.assign(sun.shadow.camera, { left:-130, right:130, top:130, bottom:-130, far:350 });
+        sun.shadow.mapSize.set(2048, 2048);
+        scene.add(sun);
+
+        // ═══════════════════════════════════════════════════════════
+        // TERRAIN
+        // ═══════════════════════════════════════════════════════════
+        function getTerrainHeight(x, z) {
+            const hill = 14 * Math.exp(-(x*x + z*z) / (18*18));
+            const roll = 0.55 * Math.sin(x * 0.07) * Math.cos(z * 0.09);
+            return hill + roll;
         }
-      }
 
-      // Kangaroos
-      if (!swing.hitRegistered) {
-        for (let ki = kangarooList.length - 1; ki >= 0; ki--) {
-          const k = kangarooList[ki];
-          if (ps.pos.distanceTo(k.pos) < 5) {
-            _toDragon.subVectors(k.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
-            if (_toDragon.dot(_gFwd) > 0.4) {
-              scene.remove(k.mesh); kangarooList.splice(ki, 1);
-              addScore(1); swing.hitRegistered = true; break;
+        function getTerrainNormal(x, z) {
+            const d = 0.5;
+            const hL = getTerrainHeight(x - d, z), hR = getTerrainHeight(x + d, z);
+            const hF = getTerrainHeight(x, z - d), hB = getTerrainHeight(x, z + d);
+            return new THREE.Vector3(hL - hR, 2 * d, hF - hB).normalize();
+        }
+
+        const tGeo = new THREE.PlaneGeometry(240, 240, 100, 100);
+        tGeo.rotateX(-Math.PI / 2);
+        const tPos = tGeo.attributes.position;
+        for (let i = 0; i < tPos.count; i++) {
+            tPos.setY(i, getTerrainHeight(tPos.getX(i), tPos.getZ(i)));
+        }
+        tGeo.computeVertexNormals();
+
+        const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x4caf50 }));
+        terrain.receiveShadow = true;
+        scene.add(terrain);
+
+        // ═══════════════════════════════════════════════════════════
+        // HELPERS
+        // ═══════════════════════════════════════════════════════════
+        function mkBox(w, h, d, color, px, py, pz) {
+            const m = new THREE.Mesh(
+                new THREE.BoxGeometry(w, h, d),
+                new THREE.MeshLambertMaterial({ color })
+            );
+            if (px !== undefined) m.position.set(px, py, pz);
+            m.castShadow = true;
+            m.receiveShadow = true;
+            return m;
+        }
+
+        const _worldUp = new THREE.Vector3(0, 1, 0);
+        const _slopeQ = new THREE.Quaternion();
+        const _faceQ = new THREE.Quaternion();
+        const _yAxis = new THREE.Vector3(0, 1, 0);
+        const _eu = new THREE.Euler();
+        const _fwd = new THREE.Vector3();
+        const _cOff = new THREE.Vector3();
+        const _cTgt = new THREE.Vector3();
+        const _toDragon = new THREE.Vector3();
+        const _gFwd = new THREE.Vector3();
+
+        // ═══════════════════════════════════════════════════════════
+        // GEORGE
+        // ═══════════════════════════════════════════════════════════
+        const SKIN = 0xf5c98c, SHIRT = 0x2244cc, PANTS = 0x1a2a44, HAIR_C = 0x3a2010;
+
+        const georgeRoot = new THREE.Group();
+        scene.add(georgeRoot);
+
+        georgeRoot.add(mkBox(0.78, 1.05, 0.42, SHIRT, 0, 1.275, 0));
+
+        const headPivot = new THREE.Group();
+        headPivot.position.set(0, 1.8, 0);
+        headPivot.add(
+            mkBox(0.65, 0.65, 0.65, SKIN, 0, 0.325, 0),
+            mkBox(0.68, 0.22, 0.68, HAIR_C, 0, 0.76, 0),
+            mkBox(0.13, 0.11, 0.06, 0x1a1a55, -0.15, 0.31, -0.335),
+            mkBox(0.13, 0.11, 0.06, 0x1a1a55, 0.15, 0.31, -0.335)
+        );
+        georgeRoot.add(headPivot);
+
+        const legLP = new THREE.Group();
+        legLP.position.set(-0.19, 0.75, 0);
+        legLP.add(mkBox(0.29, 0.75, 0.29, PANTS, 0, -0.375, 0));
+        georgeRoot.add(legLP);
+
+        const legRP = new THREE.Group();
+        legRP.position.set(0.19, 0.75, 0);
+        legRP.add(mkBox(0.29, 0.75, 0.29, PANTS, 0, -0.375, 0));
+        georgeRoot.add(legRP);
+
+        const armLP = new THREE.Group();
+        armLP.position.set(-0.51, 1.73, 0);
+        armLP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0));
+        georgeRoot.add(armLP);
+
+        const armRP = new THREE.Group();
+        armRP.position.set(0.51, 1.73, 0);
+        armRP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0));
+        georgeRoot.add(armRP);
+
+        // ── Player state ──
+        const BOUNDARY = 100;
+        const ps = {
+            pos: new THREE.Vector3(0, getTerrainHeight(0, 0), 0),
+            velY: 0,
+            angle: 0,
+            onGround: true,
+            walkCycle: 0,
+            moving: false,
+            hp: 3,
+            maxHp: 3,
+            invincible: 0,
+            dead: false
+        };
+
+        const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
+        const victory = { active: false, timer: 0 };
+        let level2StartedFlag = false;
+
+        // ═══════════════════════════════════════════════════════════
+        // CHECKPOINT SYSTEM
+        // ═══════════════════════════════════════════════════════════
+        let checkpoint = null;
+        let checkpointSavedForDragon = false;
+        let checkpointSavedForGlacius = false;
+
+        function saveCheckpoint(bossName) {
+            checkpoint = {
+                level: currentLevel,
+                posX: ps.pos.x,
+                posY: ps.pos.y,
+                posZ: ps.pos.z,
+                angle: ps.angle,
+                score: score,
+                bossName: bossName
+            };
+        }
+
+        function respawnFromCheckpoint() {
+            if (!checkpoint) return;
+
+            ps.pos.set(checkpoint.posX, checkpoint.posY, checkpoint.posZ);
+            ps.angle = checkpoint.angle;
+            ps.velY = 0;
+            ps.onGround = true;
+            ps.hp = ps.maxHp;
+            ps.dead = false;
+            ps.invincible = 2.0;
+            updatePlayerHp();
+
+            // Clear all projectiles
+            fireballs.forEach(fb => scene.remove(fb.mesh));
+            fireballs.length = 0;
+            iceShards.forEach(sh => scene.remove(sh.mesh));
+            iceShards.length = 0;
+
+            // Restore score
+            score = checkpoint.score;
+            scoreEl.textContent = 'SCORE: ' + score;
+
+            if (checkpoint.level === 1) {
+                // Reset fire dragon
+                dragon.hp = DRAGON_MAX_HP;
+                dragon.alive = true;
+                dragon.mesh.visible = true;
+                dragon.exploding = false;
+                dragon.explodeParticles.forEach(p => scene.remove(p.mesh));
+                dragon.explodeParticles = [];
+                dragon.attackTimer = 3.5;
+                updateHpBar();
+            } else {
+                // Reset ice dragon
+                glacius.hp = GLACIUS_MAX_HP;
+                glacius.alive = true;
+                glacius.mesh.visible = true;
+                glacius.exploding = false;
+                glacius.explodeParticles.forEach(p => scene.remove(p.mesh));
+                glacius.explodeParticles = [];
+                glacius.attackTimer = 2.0;
+                glacius.dashActive = false;
+                glacius.dashCooldown = 8;
+                updateGlaciusHpBar();
             }
-          }
-        }
-      }
 
-      // Penguins (level 2)
-      if (!swing.hitRegistered) {
-        for (let pi = penguinList.length - 1; pi >= 0; pi--) {
-          const pg = penguinList[pi];
-          if (!pg.mesh.visible) continue;
-          if (ps.pos.distanceTo(pg.pos) < 5) {
-            _toDragon.subVectors(pg.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
-            if (_toDragon.dot(_gFwd) > 0.4) {
-              scene.remove(pg.mesh); penguinList.splice(pi, 1);
-              addScore(1); swing.hitRegistered = true; break;
+            gameOverEl.style.display = 'none';
+            victory.active = false;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // TREES
+        // ═══════════════════════════════════════════════════════════
+        function placeTree(x, z) {
+            const y = getTerrainHeight(x, z);
+            scene.add(mkBox(0.55, 2.8, 0.55, 0x7a4f1e, x, y+1.4, z));
+            scene.add(mkBox(2.9, 2.9, 2.9, 0x2e7d32, x, y+4.2, z));
+            scene.add(mkBox(1.8, 1.8, 1.8, 0x388e3c, x, y+6.2, z));
+        }
+
+        [[-20,16],[12,-24],[-26,-6],[32,-18],[-32,22],[16,32],
+        [-14,-32],[-38,-14],[6,38],[-6,-38],[-42,16],
+        [24,-38],[-24,32],[48,-4],[-48,8],[30,44],[-30,-44],[10,18],[-16,-20]]
+            .forEach(([x,z]) => placeTree(x,z));
+
+        // ═══════════════════════════════════════════════════════════
+        // CLOUDS
+        // ═══════════════════════════════════════════════════════════
+        [[0,30],[40,-20],[-50,10],[20,60],[-30,-50],[60,40],[-60,-10],[10,-60]]
+            .forEach(([cx,cz]) => {
+                const g = new THREE.Group();
+                g.add(mkBox(9,2.2,5,0xffffff,0,0,0),mkBox(6,2.8,4,0xf5f5f5,5.5,0.4,0),mkBox(5,2.4,3.5,0xf0f0f0,-5,0.2,0));
+                g.position.set(cx, 26+Math.random()*8, cz);
+                scene.add(g);
+            });
+
+        const DRAG_X = 65, DRAG_Z = 32;
+
+        // ═══════════════════════════════════════════════════════════
+        // TEMPLE OF IGNAROTH (stored as variable for hiding in level 2)
+        // ═══════════════════════════════════════════════════════════
+        const TEMPLE_Y = getTerrainHeight(DRAG_X, DRAG_Z);
+        const TEMPLE_COMBAT_DIST = 20;
+
+        const STONE_C = 0x555560, DARK_C = 0x33333e, LAVA_C = 0x4a1e10;
+
+        const GLAC_X = -55, GLAC_Z = -45;
+        const ICE_TEMPLE_Y = getTerrainHeight(GLAC_X, GLAC_Z);
+        const GLAC_BASE_Y = ICE_TEMPLE_Y + 4;
+        const ICE_COMBAT_DIST = 20;
+
+        let currentLevel = 1;
+
+        const fireTempleGroup = (function buildTemple() {
+            const g = new THREE.Group();
+            const W = 16, D = 14, WH = 9, WT = 1.8, EH = 5.5;
+
+            g.add(mkBox((W+WT)*2+4, 0.9, (D+WT)*2+4, STONE_C, 0, -0.45, 0));
+            g.add(mkBox(WT, WH, (D+WT)*2, DARK_C, W+WT/2, WH/2, 0));
+            g.add(mkBox((W+WT)*2, WH, WT, DARK_C, 0, WH/2, -(D+WT/2)));
+            g.add(mkBox((W+WT)*2, WH, WT, DARK_C, 0, WH/2, D+WT/2));
+
+            const sl = D - EH;
+            g.add(mkBox(WT, WH, sl, DARK_C, -(W+WT/2), WH/2, -(EH+sl/2)));
+            g.add(mkBox(WT, WH, sl, DARK_C, -(W+WT/2), WH/2, EH+sl/2));
+            g.add(mkBox(WT, WH-5, EH*2+2, DARK_C, -(W+WT/2), 5+(WH-5)/2, 0));
+
+            const WH2 = 5;
+            g.add(mkBox(WT, WH2, (D+WT)*2, DARK_C, W+WT/2, WH+WH2/2, 0));
+            g.add(mkBox((W+WT)*2, WH2, WT, DARK_C, 0, WH+WH2/2, -(D+WT/2)));
+            g.add(mkBox((W+WT)*2, WH2, WT, DARK_C, 0, WH+WH2/2, D+WT/2));
+            g.add(mkBox(WT, WH2, (D+WT)*2, DARK_C, -(W+WT/2), WH+WH2/2, 0));
+
+            const topY = WH + WH2;
+            const mBW = 2.4, mBH = 2.8, mBS = 4.2;
+            for (let mz = -(D+WT); mz <= D+WT; mz += mBS)
+                g.add(mkBox(WT+0.6, mBH, mBW, DARK_C, W+WT/2, topY+mBH/2, mz));
+            for (let mx = -(W+WT); mx <= W+WT; mx += mBS) {
+                g.add(mkBox(mBW, mBH, WT+0.6, DARK_C, mx, topY+mBH/2, -(D+WT/2)));
+                g.add(mkBox(mBW, mBH, WT+0.6, DARK_C, mx, topY+mBH/2, D+WT/2));
             }
-          }
+            for (let mz = -(D+WT); mz <= D+WT; mz += mBS)
+                g.add(mkBox(WT+0.6, mBH, mBW, DARK_C, -(W+WT/2), topY+mBH/2, mz));
+
+            const tH = topY + 6;
+            [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz]) => {
+                const tx = sx*(W+WT+2.0), tz = sz*(D+WT+2.0);
+                g.add(mkBox(5.5, tH, 5.5, LAVA_C, tx, tH/2, tz));
+                for (let b = -1; b <= 1; b += 2) {
+                    g.add(mkBox(2.2, 3.2, 2.2, DARK_C, tx+b*1.5, tH+1.6, tz));
+                    g.add(mkBox(2.2, 3.2, 2.2, DARK_C, tx, tH+1.6, tz+b*1.5));
+                }
+            });
+
+            g.add(mkBox(3.2, WH+3, 3.2, LAVA_C, -(W+WT/2), (WH+3)/2, -(EH+1.6)));
+            g.add(mkBox(3.2, WH+3, 3.2, LAVA_C, -(W+WT/2), (WH+3)/2, EH+1.6));
+
+            [[-W*0.5, -D*0.55],[-W*0.5, D*0.55],
+            [0, -D*0.6],[0, D*0.6],
+            [W*0.5, -D*0.55],[W*0.5, D*0.55]].forEach(([px,pz]) => {
+                g.add(mkBox(1.6, topY, 1.6, LAVA_C, px, topY/2, pz));
+            });
+
+            function addTorch(lx, lz) {
+                g.add(mkBox(0.35, 1.1, 0.35, 0x3a2810, lx, 5.8, lz));
+                const fm = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.55, 0.55, 0.55),
+                    new THREE.MeshLambertMaterial({ color:0xff7700, emissive:new THREE.Color(0xff3300), emissiveIntensity:1.4 })
+                );
+                fm.position.set(lx, 6.7, lz);
+                g.add(fm);
+                const pl = new THREE.PointLight(0xff5500, 2.2, 18);
+                pl.position.set(lx, 7.0, lz);
+                g.add(pl);
+            }
+
+            addTorch( W-1.8, -(D-2));
+            addTorch( W-1.8, D-2);
+            addTorch(-W+4, -(D-2));
+            addTorch(-W+4, D-2);
+            addTorch( 0, -(D-1.5));
+            addTorch( 0, D-1.5);
+            addTorch( W*0.4, 0);
+            addTorch(-W*0.3, 0);
+
+            const lavaMat = new THREE.MeshLambertMaterial({ color:0xff2200, emissive:new THREE.Color(0xff1100), emissiveIntensity:0.9 });
+            const lavaPool = new THREE.Mesh(new THREE.BoxGeometry(10, 0.28, 10), lavaMat);
+            lavaPool.position.set(0, 0.14, 0);
+            g.add(lavaPool);
+
+            const lavaLight = new THREE.PointLight(0xff2200, 1.8, 28);
+            lavaLight.position.set(0, 1.5, 0);
+            g.add(lavaLight);
+
+            g.position.set(DRAG_X, TEMPLE_Y, DRAG_Z);
+            scene.add(g);
+            return g;
+        })();
+
+        // ═══════════════════════════════════════════════════════════
+        // DRAGON BATTLE MURAL (stored as variable for hiding in level 2)
+        // ═══════════════════════════════════════════════════════════
+        const fireMuralPlane = (function buildMural() {
+            const CW = 960, CH = 640;
+            const cv = document.createElement('canvas');
+            cv.width = CW;
+            cv.height = CH;
+            const ctx = cv.getContext('2d');
+
+            ctx.fillStyle = '#140a04';
+            ctx.fillRect(0, 0, CW, CH);
+
+            ctx.strokeStyle = '#5a2a08';
+            ctx.lineWidth = 26;
+            ctx.strokeRect(13, 13, CW - 26, CH - 26);
+
+            const pix = [
+                [1,1,0,0,0,0,0,0,0,0,1,1],
+                [1,2,1,0,0,3,3,0,0,1,2,1],
+                [2,1,1,0,3,4,4,3,0,1,1,2],
+                [1,1,2,3,4,4,4,4,3,2,1,1],
+                [0,1,1,3,4,4,4,4,3,1,1,0],
+                [0,1,2,3,3,4,4,3,3,2,1,0],
+                [0,0,1,0,3,3,3,3,0,1,0,0],
+                [0,0,1,0,0,3,3,0,0,1,0,0],
+            ];
+            const clr = { 1:'#ee1100', 2:'#991100', 3:'#ff7700', 4:'#ffee00' };
+            const PW = (CW - 80) / 12, PH = (CH - 100) / 8;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 12; c++) {
+                    const v = pix[r][c];
+                    if (!v) continue;
+                    ctx.fillStyle = clr[v];
+                    ctx.fillRect(40 + c * PW + 3, 40 + r * PH + 3, PW - 6, PH - 6);
+                }
+            }
+
+            ctx.fillStyle = '#ffaa33';
+            ctx.font = 'bold 44px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('THE BATTLE OF IGNAROTH', CW / 2, CH - 30);
+
+            const tex = new THREE.CanvasTexture(cv);
+            const plane = new THREE.Mesh(
+                new THREE.PlaneGeometry(26, 14),
+                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+            );
+            plane.position.set(DRAG_X + 15.5, TEMPLE_Y + 7, DRAG_Z);
+            plane.rotation.y = -Math.PI / 2;
+            scene.add(plane);
+            return plane;
+        })();
+
+        // ═══════════════════════════════════════════════════════════
+        // SHEEP
+        // ═══════════════════════════════════════════════════════════
+        function createSheep(sx, sz) {
+            const root = new THREE.Group();
+            root.add(mkBox(1.15,0.78,0.7,0xf2efea,0,0.72,0));
+            root.add(mkBox(0.42,0.42,0.48,0xb0a898,0,0.88,-0.65));
+            root.add(mkBox(0.14,0.26,0.12,0xb0a898,-0.26,0.98,-0.65));
+            root.add(mkBox(0.14,0.26,0.12,0xb0a898, 0.26,0.98,-0.65));
+            root.add(mkBox(0.09,0.09,0.05,0x111111,-0.12,0.88,-0.9));
+            root.add(mkBox(0.09,0.09,0.05,0x111111, 0.12,0.88,-0.9));
+
+            function mkLegPiv(lx,lz){
+                const p=new THREE.Group();
+                p.position.set(lx,0.5,lz);
+                p.add(mkBox(0.16,0.52,0.16,0x3a3330,0,-0.26,0));
+                root.add(p);
+                return p;
+            }
+            const legs = { fl:mkLegPiv(-0.33,-0.24), fr:mkLegPiv(0.33,-0.24), bl:mkLegPiv(-0.33,0.24), br:mkLegPiv(0.33,0.24) };
+
+            const sy = getTerrainHeight(sx,sz);
+            root.position.set(sx,sy,sz);
+            scene.add(root);
+
+            return { mesh:root, pos:new THREE.Vector3(sx,sy,sz), angle:Math.random()*Math.PI*2, speed:1.2+Math.random()*0.8, walkTimer:1+Math.random()*3, walking:true, walkCycle:Math.random()*Math.PI*2, legs };
         }
-      }
 
-      // Glacius
-      if (!swing.hitRegistered && glacius.alive) {
-        if (ps.pos.distanceTo(glacius.pos) < 8) {
-          _toDragon.subVectors(glacius.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
-          if (_toDragon.dot(_gFwd) > 0.35) { hitGlacius(); swing.hitRegistered = true; }
+        const sheepList = [[18,8],[-12,22],[10,-20],[-22,-12],[28,-16],[-6,30],[20,26]]
+            .map(([x,z]) => createSheep(x,z));
+
+        // ═══════════════════════════════════════════════════════════
+        // KANGAROOS
+        // ═══════════════════════════════════════════════════════════
+        function createKangaroo(kx, kz) {
+            const C = 0xb8864e, D = 0x8b6532;
+            const root = new THREE.Group();
+            root.add(mkBox(0.78, 1.1, 0.6, C, 0, 1.0, 0));
+            root.add(mkBox(0.44, 0.48, 0.5, C, 0, 1.85, -0.3));
+            root.add(mkBox(0.1, 0.42, 0.08, C, -0.18, 2.16, -0.3));
+            root.add(mkBox(0.1, 0.42, 0.08, C, 0.18, 2.16, -0.3));
+            root.add(mkBox(0.22, 0.18, 0.14, D, 0, 1.74, -0.58));
+            root.add(mkBox(0.07, 0.07, 0.04, 0x111111, -0.13, 1.86, -0.58));
+            root.add(mkBox(0.07, 0.07, 0.04, 0x111111, 0.13, 1.86, -0.58));
+            root.add(mkBox(0.22, 0.22, 0.85, D, 0, 0.32, 0.52));
+
+            function mkHLeg(lx) {
+                const p = new THREE.Group();
+                p.position.set(lx, 0.52, 0.1);
+                p.add(mkBox(0.25, 0.9, 0.25, D, 0, -0.45, 0));
+                root.add(p);
+                return p;
+            }
+            const hlL = mkHLeg(-0.28), hlR = mkHLeg(0.28);
+
+            root.add(mkBox(0.17, 0.5, 0.17, C, -0.42, 1.38, -0.08));
+            root.add(mkBox(0.17, 0.5, 0.17, C, 0.42, 1.38, -0.08));
+
+            const ky = getTerrainHeight(kx, kz);
+            root.position.set(kx, ky, kz);
+            scene.add(root);
+
+            return { mesh: root, pos: new THREE.Vector3(kx, ky, kz), angle: Math.random()*Math.PI*2, velY: 0, onGround: true, hopTimer: Math.random()*2, walkCycle: 0, hlL, hlR };
         }
-      }
 
-      // Dragon
-      if (!swing.hitRegistered && dragon.alive) {
-        const distToDragon = ps.pos.distanceTo(dragon.pos);
-        if (distToDragon < 8) {
-          _toDragon.subVectors(dragon.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
-          if (_toDragon.dot(_gFwd) > 0.35) {
-            hitDragon(); swing.hitRegistered = true;
-          }
+        const kangarooList = [[-30,10],[25,-30],[-15,-40],[40,-25],[-45,20],[15,40],[-35,-20],[30,30]]
+            .map(([x,z]) => createKangaroo(x,z));
+
+        // ═══════════════════════════════════════════════════════════
+        // PENGUINS (level 2)
+        // ═══════════════════════════════════════════════════════════
+        function createPenguin(px, pz) {
+            const root = new THREE.Group();
+            const BLK = 0x111122, WHT = 0xf0f0f0, ORG = 0xff8800;
+
+            root.add(mkBox(0.52, 0.80, 0.42, BLK, 0, 0.55, 0));
+            root.add(mkBox(0.30, 0.55, 0.10, WHT, 0, 0.55, -0.22));
+            root.add(mkBox(0.42, 0.38, 0.38, BLK, 0, 1.12, 0));
+            root.add(mkBox(0.13, 0.10, 0.06, WHT,-0.13,1.17,-0.20));
+            root.add(mkBox(0.13, 0.10, 0.06, WHT, 0.13,1.17,-0.20));
+            root.add(mkBox(0.07, 0.07, 0.05, 0x000000,-0.13,1.17,-0.23));
+            root.add(mkBox(0.07, 0.07, 0.05, 0x000000, 0.13,1.17,-0.23));
+            root.add(mkBox(0.10, 0.07, 0.14, ORG, 0, 1.09,-0.24));
+
+            const flL = new THREE.Group();
+            flL.position.set(-0.35, 0.65, 0);
+            flL.add(mkBox(0.12, 0.48, 0.14, BLK, 0,-0.24, 0));
+            root.add(flL);
+
+            const flR = new THREE.Group();
+            flR.position.set( 0.35, 0.65, 0);
+            flR.add(mkBox(0.12, 0.48, 0.14, BLK, 0,-0.24, 0));
+            root.add(flR);
+
+            root.add(mkBox(0.16, 0.07, 0.22, ORG,-0.15, 0.08, 0.04));
+            root.add(mkBox(0.16, 0.07, 0.22, ORG, 0.15, 0.08, 0.04));
+
+            const py = getTerrainHeight(px, pz);
+            root.position.set(px, py, pz);
+            root.visible = false;
+            scene.add(root);
+
+            return { mesh: root, flL, flR, pos: new THREE.Vector3(px, py, pz), angle: Math.random()*Math.PI*2, walkCycle: 0, walkTimer: Math.random()*3, walking: true };
         }
-      }
-    }
 
-    if (swing.timer >= swing.duration) {
-      swing.active = false; swing.cooldown = 0.25; armRP.rotation.x = 0;
-    }
-  }
-  if (swing.cooldown > 0) swing.cooldown -= dt;
+        const penguinList = [
+            [-45,-35],[-62,-30],[-40,-52],[-68,-46],[-52,-58],
+            [-36,-42],[-58,-62],[-72,-36],[-47,-68],[-33,-48]
+        ].map(([x,z]) => createPenguin(x,z));
 
-  // ────────────────────────────────────────────────────────
-  //  SHEEP AI
-  // ────────────────────────────────────────────────────────
-  sheepList.forEach(s => {
-    s.walkTimer -= dt;
-    if (s.walkTimer <= 0) {
-      s.walking = Math.random() < 0.65;
-      s.angle = Math.random() * Math.PI * 2;
-      s.speed = 1.2 + Math.random() * 0.8;
-      s.walkTimer = s.walking ? (2+Math.random()*3) : (1+Math.random()*2);
-    }
-    if (s.walking) {
-      s.pos.x += Math.sin(s.angle) * s.speed * dt;
-      s.pos.z += Math.cos(s.angle) * s.speed * dt;
-      s.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, s.pos.x));
-      s.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, s.pos.z));
-      s.walkCycle += dt * 5;
-      const ssw = Math.sin(s.walkCycle) * 0.32;
-      s.legs.fl.rotation.x= ssw; s.legs.fr.rotation.x=-ssw;
-      s.legs.bl.rotation.x=-ssw; s.legs.br.rotation.x= ssw;
-    }
-    s.pos.y = getTerrainHeight(s.pos.x, s.pos.z);
-    s.mesh.position.copy(s.pos);
-    s.mesh.rotation.y = s.angle;
-  });
+        // ═══════════════════════════════════════════════════════════
+        // GLACIUS — THE FROZEN TERROR (level 2 boss — HARDER)
+        // ═══════════════════════════════════════════════════════════
+        const GLACIUS_MAX_HP = 12;
 
-  // ────────────────────────────────────────────────────────
-  //  KANGAROO AI
-  // ────────────────────────────────────────────────────────
-  kangarooList.forEach(k => {
-    k.hopTimer -= dt;
-    if (k.onGround && k.hopTimer <= 0) {
-      // Start a new hop: pick a new random direction and leap
-      k.angle = Math.random() * Math.PI * 2;
-      k.velY  = 7.5;
-      k.onGround = false;
-      k.hopTimer = 1.8 + Math.random() * 2.4;
-    }
-    if (!k.onGround) {
-      k.pos.x -= Math.sin(k.angle) * 3.5 * dt;
-      k.pos.z -= Math.cos(k.angle) * 3.5 * dt;
-      k.velY  -= 22 * dt;
-      k.pos.y += k.velY * dt;
-    }
-    const groundY = getTerrainHeight(k.pos.x, k.pos.z);
-    if (k.pos.y <= groundY) { k.pos.y = groundY; k.velY = 0; k.onGround = true; }
-    k.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.x));
-    k.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.z));
-    // Animate: tuck hind legs up mid-air, down when landed
-    const legAngle = k.onGround ? 0 : -0.7 + Math.max(0, k.velY) * 0.05;
-    k.hlL.rotation.x = legAngle;
-    k.hlR.rotation.x = legAngle;
-    k.mesh.position.copy(k.pos);
-    k.mesh.rotation.y = k.angle;
-  });
+        function buildGlacius() {
+            const root = new THREE.Group();
+            const IB = 0x7fc4d8, IW = 0x4a96b8, IL = 0xd0eef8, IS = 0xe8f4fd;
 
-  // ────────────────────────────────────────────────────────
-  //  PENGUIN AI  (level 2)
-  // ────────────────────────────────────────────────────────
-  penguinList.forEach(pg => {
-    if (!pg.mesh.visible) return;
-    pg.walkTimer -= dt;
-    if (pg.walkTimer <= 0) {
-      pg.walking = Math.random() < 0.7;
-      pg.angle   = Math.random() * Math.PI * 2;
-      pg.walkTimer = pg.walking ? (2+Math.random()*3) : (0.8+Math.random()*1.5);
-    }
-    if (pg.walking) {
-      pg.pos.x -= Math.sin(pg.angle) * 1.0 * dt;
-      pg.pos.z -= Math.cos(pg.angle) * 1.0 * dt;
-      pg.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, pg.pos.x));
-      pg.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, pg.pos.z));
-      pg.walkCycle += dt * 5;
-      const pw = Math.sin(pg.walkCycle) * 0.28;
-      pg.flL.rotation.x =  pw; pg.flR.rotation.x = -pw;
-    }
-    pg.pos.y = getTerrainHeight(pg.pos.x, pg.pos.z);
-    pg.mesh.position.copy(pg.pos);
-    pg.mesh.rotation.y = pg.angle;
-  });
+            root.add(mkBox(3.5,2.2,5.2, IB, 0, 1.1, 0));
+            root.add(mkBox(3.8,0.5,5.4, IL, 0, 0.06, 0));
+            root.add(mkBox(1.4,2.0,1.6, IB, 0, 2.7,-2.8));
+            root.add(mkBox(2.1,1.7,2.4, 0x5aa0bc, 0, 3.5,-4.2));
+            root.add(mkBox(1.3,0.8,1.6, 0x4a90ac, 0, 3.1,-5.4));
+            root.add(mkBox(0.22,0.15,0.12, 0xaaddee,-0.3,3.12,-6.18));
+            root.add(mkBox(0.22,0.15,0.12, 0xaaddee, 0.3,3.12,-6.18));
+            root.add(mkBox(0.28,1.8,0.28, IS,-0.65,4.9,-4.0));
+            root.add(mkBox(0.28,1.8,0.28, IS, 0.65,4.9,-4.0));
+            root.add(mkBox(0.2,1.1,0.2, IS,-0.3,4.6,-4.0));
+            root.add(mkBox(0.2,1.1,0.2, IS, 0.3,4.6,-4.0));
 
-  // ────────────────────────────────────────────────────────
-  //  GLACIUS — animation & AI  (level 2)
-  // ────────────────────────────────────────────────────────
-  if (glacius.alive && !glacius.exploding) {
-    const gt = now * 0.001;
-    glacius.pos.y = GLAC_BASE_Y + Math.sin(gt * 1.6) * 0.6;
-    glacius.mesh.position.y = glacius.pos.y;
-    const gFlap = Math.sin(gt * 3.2) * 0.45;
-    glacius.wingGLP.rotation.z =  gFlap;
-    glacius.wingGRP.rotation.z = -gFlap;
-    const gDx = ps.pos.x - GLAC_X, gDz = ps.pos.z - GLAC_Z;
-    const gDist = Math.sqrt(gDx*gDx + gDz*gDz);
-    if (gDist < 45) {
-      const wantA = Math.atan2(gDx, gDz);
-      let gdiff = wantA - glacius.angle;
-      while (gdiff >  Math.PI) gdiff -= 2*Math.PI;
-      while (gdiff < -Math.PI) gdiff += 2*Math.PI;
-      glacius.angle += gdiff * Math.min(dt * 1.4, 1);
-    }
-    glacius.mesh.rotation.y = glacius.angle;
-    if (glacius.hitFlash > 0) {
-      glacius.hitFlash -= dt;
-      const f = Math.max(0, glacius.hitFlash) / 0.25;
-      glaciusParts.eyeMatGL.emissiveIntensity = 1.3 + f * 2;
-      glaciusParts.eyeMatGR.emissiveIntensity = 1.3 + f * 2;
-    }
-    if (gDist < ICE_COMBAT_DIST) {
-      glacius.attackTimer -= dt;
-      if (glacius.attackTimer <= 0) {
-        spawnIceShard();
-        glacius.attackTimer = 3.0 + Math.random() * 1.5;
-      }
-    } else {
-      glacius.attackTimer = Math.max(glacius.attackTimer, 1.5);
-    }
-  }
+            const eyeMatGL = new THREE.MeshLambertMaterial({ color:0x00ccff, emissive:0x00aaff, emissiveIntensity:1.3 });
+            const eyeMatGR = eyeMatGL.clone();
+            const eyeGL = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatGL);
+            eyeGL.position.set(-0.58,3.52,-5.36);
+            root.add(eyeGL);
+            const eyeGR = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatGR);
+            eyeGR.position.set( 0.58,3.52,-5.36);
+            root.add(eyeGR);
 
-  // Glacius explosion particles
-  if (glacius.exploding) {
-    glacius.explodeAge += dt;
-    glacius.explodeParticles.forEach(p => {
-      p.age += dt;
-      p.vel.y -= 18 * dt;
-      p.mesh.position.x += p.vel.x * dt;
-      p.mesh.position.y += p.vel.y * dt;
-      p.mesh.position.z += p.vel.z * dt;
-      p.mesh.rotation.x += dt * 3;
-      p.mesh.rotation.z += dt * 2;
-      p.mesh.material.opacity = 1 - p.age / 2.0;
-      p.mesh.material.transparent = true;
-    });
-    if (glacius.explodeAge > 2.0) {
-      glacius.explodeParticles.forEach(p => scene.remove(p.mesh));
-      glacius.explodeParticles = [];
-      glacius.exploding = false;
-    }
-  }
+            root.add(mkBox(2.0,1.6,2.5, IB, 0, 0.9, 3.0));
+            root.add(mkBox(1.2,1.1,2.8, 0x6ab0c8, 0, 0.55, 5.5));
+            root.add(mkBox(0.7,0.7,2.0, 0x5aa0b8, 0, 0.28, 7.8));
+            root.add(mkBox(0.35,0.35,0.9, IS, 0, 0.15, 9.5));
 
-  // Ice shard update
-  for (let i = iceShards.length - 1; i >= 0; i--) {
-    const sh = iceShards[i];
-    sh.age += dt;
-    sh.pos.x += sh.vel.x * dt;
-    sh.pos.y += sh.vel.y * dt;
-    sh.pos.z += sh.vel.z * dt;
-    sh.mesh.position.copy(sh.pos);
-    sh.mesh.rotation.x += dt * 5;
-    sh.mesh.rotation.z += dt * 4;
-    if (sh.pos.distanceTo(ps.pos) < 1.8) {
-      hitPlayer(); scene.remove(sh.mesh); iceShards.splice(i, 1); continue;
-    }
-    if (sh.age > 5 || sh.pos.y < getTerrainHeight(sh.pos.x, sh.pos.z) - 0.5) {
-      scene.remove(sh.mesh); iceShards.splice(i, 1);
-    }
-  }
+            [-0.8,0,0.8].forEach(ix => root.add(mkBox(0.22,1.5,0.22, IS, ix, 1.0+Math.abs(ix)*0.3, ix)));
 
-  // Level 2 HUD: ice temple hint + Glacius HP bar
-  if (currentLevel === 2 && glacius.alive) {
-    const gDxH = ps.pos.x - GLAC_X, gDzH = ps.pos.z - GLAC_Z;
-    const gDistH = Math.sqrt(gDxH*gDxH + gDzH*gDzH);
-    iceHintEl.style.display    = (gDistH > ICE_COMBAT_DIST && gDistH < 45) ? 'block' : 'none';
-    glaciusHudEl.style.display = gDistH < ICE_COMBAT_DIST ? 'block' : 'none';
-  } else {
-    iceHintEl.style.display = 'none';
-  }
+            const wingGLP = new THREE.Group();
+            wingGLP.position.set(-1.75,2.0,0.5);
+            wingGLP.add(mkBox(3.6,0.2,2.6, IW,-1.8,0,0));
+            wingGLP.add(mkBox(2.5,0.18,2.2, 0x3a80a0,-5.1,0.1,0.4));
+            wingGLP.add(mkBox(1.2,0.15,1.5, 0x2a6080,-7.1,0.2,0.6));
+            root.add(wingGLP);
 
-  // ────────────────────────────────────────────────────────
-  //  IGNAROTH — animation & AI
-  // ────────────────────────────────────────────────────────
-  if (dragon.alive && !dragon.exploding) {
-    const t = now * 0.001;
+            const wingGRP = new THREE.Group();
+            wingGRP.position.set(1.75,2.0,0.5);
+            wingGRP.add(mkBox(3.6,0.2,2.6, IW, 1.8,0,0));
+            wingGRP.add(mkBox(2.5,0.18,2.2, 0x3a80a0, 5.1,0.1,0.4));
+            wingGRP.add(mkBox(1.2,0.15,1.5, 0x2a6080, 7.1,0.2,0.6));
+            root.add(wingGRP);
 
-    // Hover
-    dragon.pos.y = DRAG_BASE_Y + Math.sin(t * 1.8) * 0.55;
-    dragon.mesh.position.y = dragon.pos.y;
+            function mkGLeg(lx,lz) {
+                root.add(mkBox(0.65,1.3,0.65, IB, lx, 0.3, lz));
+                root.add(mkBox(0.5, 1.3,0.5, 0x5a9ab0, lx*0.8,-1.1,lz+lx*0.05));
+                root.add(mkBox(0.7, 0.25,1.0, IS, lx*0.8,-1.8,lz-0.3));
+            }
+            mkGLeg(-1.6,-2.0);
+            mkGLeg(1.6,-2.0);
+            mkGLeg(-1.6, 2.0);
+            mkGLeg(1.6, 2.0);
 
-    // Wing flap
-    const flap = Math.sin(t * 3.5) * 0.42;
-    dragon.wingLP.rotation.z =  flap;
-    dragon.wingRP.rotation.z = -flap;
+            root.position.set(GLAC_X, GLAC_BASE_Y, GLAC_Z);
+            root.visible = false;
+            scene.add(root);
 
-    // Face George when close
-    const dxd = ps.pos.x - DRAG_X, dzd = ps.pos.z - DRAG_Z;
-    const distPlayer = Math.sqrt(dxd*dxd + dzd*dzd);
-    if (distPlayer < 40) {
-      const wantAngle = Math.atan2(dxd, dzd);
-      let diff = wantAngle - dragon.angle;
-      // Normalize diff to [-π, π]
-      while (diff >  Math.PI) diff -= 2*Math.PI;
-      while (diff < -Math.PI) diff += 2*Math.PI;
-      dragon.angle += diff * Math.min(dt * 1.5, 1);
-    }
-    dragon.mesh.rotation.y = dragon.angle;
+            return { root, wingGLP, wingGRP, eyeMatGL, eyeMatGR };
+        }
 
-    // Hit flash tint
-    if (dragon.hitFlash > 0) {
-      dragon.hitFlash -= dt;
-      const f = Math.max(0, dragon.hitFlash) / 0.25;
-      dragonParts.eyeMatL.emissiveIntensity = 0.9 + f * 2;
-      dragonParts.eyeMatR.emissiveIntensity = 0.9 + f * 2;
-    }
+        const glaciusParts = buildGlacius();
+        const glacius = {
+            mesh: glaciusParts.root,
+            wingGLP: glaciusParts.wingGLP,
+            wingGRP: glaciusParts.wingGRP,
+            pos: new THREE.Vector3(GLAC_X, GLAC_BASE_Y, GLAC_Z),
+            angle: 0,
+            hp: GLACIUS_MAX_HP,
+            alive: false,
+            hitFlash: 0,
+            exploding: false,
+            explodeParticles: [],
+            explodeAge: 0,
+            attackTimer: 2.0,
+            // New: enhanced attack patterns
+            attackPattern: 0,
+            dashActive: false,
+            dashVelX: 0,
+            dashVelZ: 0,
+            dashTimer: 0,
+            dashCooldown: 8,
+            freezeTimer: 6,
+        };
 
-    // Dragon attack — fire a fireball every 3.5–5 s when player is in the temple
-    if (distPlayer < TEMPLE_COMBAT_DIST) {
-      dragon.attackTimer -= dt;
-      if (dragon.attackTimer <= 0) {
-        spawnFireball();
-        dragon.attackTimer = 3.5 + Math.random() * 1.5;
-      }
-    } else {
-      // Reset timer so the dragon doesn't fire immediately on entry
-      dragon.attackTimer = Math.max(dragon.attackTimer, 1.5);
-    }
-  }
+        // ═══════════════════════════════════════════════════════════
+        // SWORD
+        // ═══════════════════════════════════════════════════════════
+        const SWORD_POS = new THREE.Vector3(6, 0, -10);
+        SWORD_POS.y = getTerrainHeight(SWORD_POS.x, SWORD_POS.z) + 0.6;
 
-  // ────────────────────────────────────────────────────────
-  //  EXPLOSION PARTICLES
-  // ────────────────────────────────────────────────────────
-  if (dragon.exploding) {
-    dragon.explodeAge += dt;
-    let allDone = true;
-    dragon.explodeParticles.forEach(p => {
-      p.age += dt;
-      p.vel.y -= 18 * dt; // gravity
-      p.mesh.position.x += p.vel.x * dt;
-      p.mesh.position.y += p.vel.y * dt;
-      p.mesh.position.z += p.vel.z * dt;
-      p.mesh.rotation.x += dt * 3;
-      p.mesh.rotation.z += dt * 2;
-      const life = p.age / 2.0;
-      p.mesh.material.opacity = 1 - life;
-      p.mesh.material.transparent = true;
-      if (p.age < 2.0) allDone = false;
-    });
-    if (dragon.explodeAge > 2.0) {
-      dragon.explodeParticles.forEach(p => scene.remove(p.mesh));
-      dragon.explodeParticles = [];
-      dragon.exploding = false;
-    }
-  }
+        const groundSword = new THREE.Group();
+        groundSword.add(mkBox(0.08, 1.2, 0.08, 0xdddddd, 0, 0, 0));
+        groundSword.add(mkBox(0.55, 0.08, 0.08, 0xaaaa44, 0, -0.52, 0));
+        groundSword.add(mkBox(0.09, 0.38, 0.09, 0x5a3a1e, 0, -0.8, 0));
+        groundSword.add(mkBox(0.16, 0.14, 0.16, 0x998833, 0, -1.02, 0));
 
-  // ────────────────────────────────────────────────────────
-  //  FIREBALL UPDATE
-  // ────────────────────────────────────────────────────────
-  for (let i = fireballs.length - 1; i >= 0; i--) {
-    const fb = fireballs[i];
-    fb.age += dt;
-    fb.pos.x += fb.vel.x * dt;
-    fb.pos.y += fb.vel.y * dt;
-    fb.pos.z += fb.vel.z * dt;
-    fb.mesh.position.copy(fb.pos);
-    fb.mesh.rotation.x += dt * 4;
-    fb.mesh.rotation.z += dt * 3;
+        const glowRing = mkBox(0.6, 0.6, 0.6, 0xffee44, 0, 0, 0);
+        glowRing.material.transparent = true;
+        glowRing.material.opacity = 0.18;
+        groundSword.add(glowRing);
 
-    // Hit player?
-    if (fb.pos.distanceTo(ps.pos) < 1.8) {
-      hitPlayer();
-      scene.remove(fb.mesh);
-      fireballs.splice(i, 1);
-      continue;
-    }
-    // Expire or hit ground
-    if (fb.age > 5 || fb.pos.y < getTerrainHeight(fb.pos.x, fb.pos.z) - 0.5) {
-      scene.remove(fb.mesh);
-      fireballs.splice(i, 1);
-    }
-  }
+        groundSword.position.copy(SWORD_POS);
+        groundSword.rotation.z = Math.PI / 2;
+        scene.add(groundSword);
 
-  // ────────────────────────────────────────────────────────
-  //  TEMPLE HUD / APPROACH HINT
-  // ────────────────────────────────────────────────────────
-  if (dragon.alive) {
-    const dxT = ps.pos.x - DRAG_X, dzT = ps.pos.z - DRAG_Z;
-    const distToTemple = Math.sqrt(dxT*dxT + dzT*dzT);
-    templeHintEl.style.display = (distToTemple > TEMPLE_COMBAT_DIST && distToTemple < 40) ? 'block' : 'none';
-    dragonHudEl.style.display  = distToTemple < TEMPLE_COMBAT_DIST ? 'block' : 'none';
-  }
+        const handSword = new THREE.Group();
+        handSword.add(mkBox(0.07, 1.0, 0.07, 0xdddddd, 0, -0.62, 0));
+        handSword.add(mkBox(0.5, 0.07, 0.07, 0xaaaa44, 0, -0.15, 0));
+        handSword.add(mkBox(0.08, 0.3, 0.08, 0x5a3a1e, 0, 0.08, 0));
+        handSword.position.set(0.05, -0.9, -0.1);
+        handSword.rotation.x = -0.2;
+        handSword.visible = false;
+        armRP.add(handSword);
 
-  // Invincibility countdown
-  if (ps.invincible > 0) ps.invincible -= dt;
+        const fpArm = new THREE.Group();
+        fpArm.add(mkBox(0.22, 0.55, 0.22, SHIRT, 0, -0.28, 0));
+        fpArm.add(mkBox(0.07, 0.95, 0.07, 0xdddddd, 0, -0.88, -0.05));
+        fpArm.add(mkBox(0.44, 0.07, 0.07, 0xaaaa44, 0, -0.42, 0));
+        fpArm.add(mkBox(0.09, 0.30, 0.09, 0x5a3a1e, 0, -0.27, 0));
+        fpArm.visible = false;
+        scene.add(fpArm);
 
-  renderer.render(scene, camera);
-}
+        const sword = { pickedUp: false };
+        const swing = { active:false, timer:0, duration:0.5, hitRegistered:false, cooldown:0 };
 
-// ═══════════════════════════════════════════════════════════
-//  HIT DRAGON
-// ═══════════════════════════════════════════════════════════
-function hitDragon() {
-  dragon.hp--;
-  dragon.hitFlash = 0.25;
-  flashHitOverlay();
-  updateHpBar();
+        // ═══════════════════════════════════════════════════════════
+        // IGNAROTH — THE FLAME KING
+        // ═══════════════════════════════════════════════════════════
+        const DRAGON_MAX_HP = 5;
+        const DRAG_BASE_Y = getTerrainHeight(DRAG_X, DRAG_Z) + 4;
 
-  if (dragon.hp <= 0) {
-    dragon.alive = false;
-    dragon.mesh.visible = false;
-    dragon.exploding = true;
-    spawnExplosion();
-    addScore(10);
-    victoryMsgEl.style.display = 'block';
-    document.getElementById('dragon-hud').style.display = 'none';
-    victory.active = true;
-    victory.timer  = 0;
-  }
-}
+        function buildDragon() {
+            const root = new THREE.Group();
 
-// ═══════════════════════════════════════════════════════════
-//  HIT GLACIUS
-// ═══════════════════════════════════════════════════════════
-function updateGlaciusHpBar() {
-  document.getElementById('glacius-hp-fill').style.width = (glacius.hp / 6 * 100) + '%';
-}
+            root.add(mkBox(3.5, 2.2, 5.2, 0xaa1500, 0, 1.1, 0));
+            root.add(mkBox(3.8, 0.5, 5.4, 0xff4400, 0, 0.06, 0));
+            root.add(mkBox(1.4, 2.0, 1.6, 0xaa1500, 0, 2.7, -2.8));
+            root.add(mkBox(2.1, 1.7, 2.4, 0xcc2200, 0, 3.5, -4.2));
+            root.add(mkBox(1.3, 0.8, 1.6, 0xcc3300, 0, 3.1, -5.4));
+            root.add(mkBox(0.22,0.15,0.12, 0x440000, -0.3, 3.12, -6.18));
+            root.add(mkBox(0.22,0.15,0.12, 0x440000, 0.3, 3.12, -6.18));
+            root.add(mkBox(0.28, 1.5, 0.28, 0x550e00, -0.65, 4.8, -4.0));
+            root.add(mkBox(0.28, 1.5, 0.28, 0x550e00, 0.65, 4.8, -4.0));
 
-function spawnGlaciusExplosion() {
-  const colors = [0x80d8f0, 0x00aaff, 0xaaddff, 0xffffff, 0x0055cc, 0x44aaee];
-  for (let i = 0; i < 22; i++) {
-    const s = 0.3 + Math.random()*0.9;
-    const p = mkBox(s,s,s, colors[Math.floor(Math.random()*colors.length)]);
-    p.position.copy(glacius.pos).add(new THREE.Vector3(
-      (Math.random()-0.5)*3, Math.random()*2, (Math.random()-0.5)*3
-    ));
-    const vel = new THREE.Vector3(
-      (Math.random()-0.5)*14, 4+Math.random()*10, (Math.random()-0.5)*14
-    );
-    scene.add(p);
-    glacius.explodeParticles.push({ mesh:p, vel, age:0 });
-  }
-}
+            const eyeMatL = new THREE.MeshLambertMaterial({ color:0xff8800, emissive:0xff4400, emissiveIntensity:0.9 });
+            const eyeMatR = eyeMatL.clone();
+            const eyeL2 = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatL);
+            eyeL2.position.set(-0.58, 3.52, -5.36);
+            eyeL2.castShadow=true;
+            root.add(eyeL2);
+            const eyeR2 = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.32,0.18), eyeMatR);
+            eyeR2.position.set( 0.58, 3.52, -5.36);
+            eyeR2.castShadow=true;
+            root.add(eyeR2);
 
-function hitGlacius() {
-  glacius.hp--;
-  glacius.hitFlash = 0.25;
-  flashHitOverlay();
-  updateGlaciusHpBar();
-  if (glacius.hp <= 0) {
-    glacius.alive = false;
-    glacius.mesh.visible = false;
-    glacius.exploding = true;
-    spawnGlaciusExplosion();
-    addScore(15);
-    document.getElementById('glacius-victory-msg').style.display = 'block';
-    document.getElementById('glacius-hud').style.display = 'none';
-    // Reuse hilltop victory cinematic
-    victoryMsgEl.style.display = 'none'; // hide old Ignaroth message
-    victory.active = true;
-    victory.timer  = 0;
-  }
-}
+            root.add(mkBox(2.0, 1.6, 2.5, 0xaa1500, 0, 0.9, 3.0));
+            root.add(mkBox(1.2, 1.1, 2.8, 0x991400, 0, 0.55, 5.5));
+            root.add(mkBox(0.7, 0.7, 2.0, 0x881200, 0, 0.28, 7.8));
+            root.add(mkBox(0.3, 0.3, 0.8, 0x771100, 0, 0.15, 9.5));
 
-// ═══════════════════════════════════════════════════════════
-//  START LEVEL 2
-// ═══════════════════════════════════════════════════════════
-const iceHintEl    = document.getElementById('ice-temple-hint');
-const glaciusHudEl = document.getElementById('glacius-hud');
-const levelTransEl = document.getElementById('level-transition');
+            const wingLP = new THREE.Group();
+            wingLP.position.set(-1.75, 2.0, 0.5);
+            wingLP.add(mkBox(3.6,0.2,2.6, 0x880000,-1.8,0,0));
+            wingLP.add(mkBox(2.5,0.18,2.2, 0x660000,-5.1,0.1,0.4));
+            wingLP.add(mkBox(1.2,0.15,1.5, 0x550000,-7.1,0.2,0.6));
+            root.add(wingLP);
 
-function startLevel2() {
-  currentLevel = 2;
-  // Freeze the world
-  scene.background = new THREE.Color(0x7ab0cc);
-  scene.fog.color.set(0x7ab0cc);
-  terrain.material.color.set(0xd4eef8);
-  sun.color.set(0xc8e8f8);
-  sun.intensity = 0.7;
-  // Show ice temple, mural, Glacius, penguins
-  iceTempleGroup.visible = true;
-  iceMuralPlane.visible  = true;
-  glacius.mesh.visible   = true;
-  glacius.alive          = true;
-  penguinList.forEach(p => { p.mesh.visible = true; });
-  // Move player to just outside ice temple entrance (west side)
-  const startX = GLAC_X - 28, startZ = GLAC_Z;
-  ps.pos.set(startX, getTerrainHeight(startX, startZ), startZ);
-  ps.velY = 0; ps.onGround = true;
-  ps.angle = 0; // face east toward ice temple entrance
-  ps.hp = ps.maxHp; ps.invincible = 2;
-  updatePlayerHp();
-  // UI
-  victoryMsgEl.style.display  = 'none';
-  levelTransEl.style.display  = 'none';
-  updateGlaciusHpBar();
-  // Re-enable movement
-  victory.active = false;
-}
+            const wingRP = new THREE.Group();
+            wingRP.position.set(1.75, 2.0, 0.5);
+            wingRP.add(mkBox(3.6,0.2,2.6, 0x880000, 1.8,0,0));
+            wingRP.add(mkBox(2.5,0.18,2.2, 0x660000, 5.1,0.1,0.4));
+            wingRP.add(mkBox(1.2,0.15,1.5, 0x550000, 7.1,0.2,0.6));
+            root.add(wingRP);
 
-animate();
-</script>
+            function mkLeg(lx, lz) {
+                root.add(mkBox(0.65,1.3,0.65, 0x991400, lx, 0.3, lz));
+                root.add(mkBox(0.5, 1.3,0.5, 0x881200, lx*0.8, -1.1, lz+lx*0.05));
+                root.add(mkBox(0.7, 0.25, 1.0, 0x771100, lx*0.8, -1.8, lz-0.3));
+            }
+            mkLeg(-1.6,-2.0);
+            mkLeg(1.6,-2.0);
+            mkLeg(-1.6, 2.0);
+            mkLeg(1.6, 2.0);
+
+            root.position.set(DRAG_X, DRAG_BASE_Y, DRAG_Z);
+            scene.add(root);
+
+            return { root, wingLP, wingRP, eyeMatL, eyeMatR };
+        }
+
+        const dragonParts = buildDragon();
+        const dragon = {
+            mesh: dragonParts.root,
+            wingLP: dragonParts.wingLP,
+            wingRP: dragonParts.wingRP,
+            pos: new THREE.Vector3(DRAG_X, DRAG_BASE_Y, DRAG_Z),
+            angle: 0,
+            hp: DRAGON_MAX_HP,
+            alive: true,
+            hitFlash: 0,
+            exploding: false,
+            explodeParticles: [],
+            explodeAge: 0,
+            attackTimer: 3.5,
+        };
+
+        function updateHpBar() {
+            document.getElementById('hp-fill').style.width = (dragon.hp / DRAGON_MAX_HP * 100) + '%';
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // INPUT
+        // ═══════════════════════════════════════════════════════════
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+            if (e.code === 'KeyF' && sword.pickedUp && !swing.active && swing.cooldown <= 0 && !victory.active) {
+                swing.active = true;
+                swing.timer = 0;
+                swing.hitRegistered = false;
+            }
+            // CHECKPOINT RESPAWN: Press R when dead
+            if (e.code === 'KeyR' && ps.dead && checkpoint) {
+                respawnFromCheckpoint();
+            }
+        });
+        window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+        // ═══════════════════════════════════════════════════════════
+        // INITIAL CAMERA
+        // ═══════════════════════════════════════════════════════════
+        {
+            const off = new THREE.Vector3(0, 5, 10).applyEuler(new THREE.Euler(0, ps.angle, 0));
+            camera.position.copy(ps.pos).add(off);
+            camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // HUD HELPERS
+        // ═══════════════════════════════════════════════════════════
+        const pickupHintEl = document.getElementById('pickup-hint');
+        const swordHudEl = document.getElementById('sword-hud');
+        const victoryMsgEl = document.getElementById('victory-msg');
+        const hitFlashEl = document.getElementById('hit-flash');
+
+        function flashHitOverlay() {
+            hitFlashEl.style.background = 'rgba(255,50,0,0.35)';
+            setTimeout(() => { hitFlashEl.style.background = 'rgba(255,50,0,0)'; }, 120);
+        }
+
+        const playerHpEl = document.getElementById('player-hp');
+        const templeHintEl = document.getElementById('temple-hint');
+        const gameOverEl = document.getElementById('game-over');
+        const dragonHudEl = document.getElementById('dragon-hud');
+        const scoreEl = document.getElementById('score-hud');
+
+        let score = 0;
+        function addScore(n) {
+            score += n;
+            scoreEl.textContent = 'SCORE: ' + score;
+        }
+
+        function updatePlayerHp() {
+            let s = '';
+            for (let i = 0; i < ps.maxHp; i++) s += (i < ps.hp ? '♥' : '♡') + ' ';
+            playerHpEl.textContent = s.trim();
+        }
+
+        function hitPlayer() {
+            if (ps.invincible > 0 || ps.dead) return;
+            ps.hp--;
+            ps.invincible = 1.5;
+            hitFlashEl.style.background = 'rgba(255,0,0,0.55)';
+            setTimeout(() => { hitFlashEl.style.background = 'rgba(255,50,0,0)'; }, 250);
+            updatePlayerHp();
+            if (ps.hp <= 0) {
+                ps.dead = true;
+                gameOverEl.style.display = 'block';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // ICE SHARDS (level 2 projectiles — faster & more complex)
+        // ═══════════════════════════════════════════════════════════
+        const iceShards = [];
+        const IS_SPEED = 13;
+
+        function spawnIceShard() {
+            const sp = new THREE.Vector3(
+                glacius.pos.x - Math.sin(glacius.angle)*3,
+                glacius.pos.y + 3.5,
+                glacius.pos.z - Math.cos(glacius.angle)*3
+            );
+            const dir = new THREE.Vector3(
+                ps.pos.x - sp.x,
+                (ps.pos.y+1.5) - sp.y,
+                ps.pos.z - sp.z
+            ).normalize();
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.45, 0.75, 0.45),
+                new THREE.MeshLambertMaterial({ color:0x80d8f0, emissive:new THREE.Color(0x00aaff), emissiveIntensity:1.3 })
+            );
+            mesh.position.copy(sp);
+            scene.add(mesh);
+            iceShards.push({ mesh, pos: sp.clone(), vel: dir.clone().multiplyScalar(IS_SPEED), age:0 });
+        }
+
+        // Triple ice shard spread — fires 3 shards in a fan pattern
+        function spawnIceShardBurst() {
+            const sp = new THREE.Vector3(
+                glacius.pos.x - Math.sin(glacius.angle)*3,
+                glacius.pos.y + 3.5,
+                glacius.pos.z - Math.cos(glacius.angle)*3
+            );
+            const baseDir = new THREE.Vector3(
+                ps.pos.x - sp.x,
+                (ps.pos.y+1.5) - sp.y,
+                ps.pos.z - sp.z
+            ).normalize();
+
+            const angles = [-0.3, 0, 0.3];
+            angles.forEach(spreadAngle => {
+                const dir = baseDir.clone();
+                const cosA = Math.cos(spreadAngle), sinA = Math.sin(spreadAngle);
+                const nx = dir.x * cosA - dir.z * sinA;
+                const nz = dir.x * sinA + dir.z * cosA;
+                dir.x = nx;
+                dir.z = nz;
+                dir.normalize();
+
+                const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.45, 0.75, 0.45),
+                    new THREE.MeshLambertMaterial({ color:0x80d8f0, emissive:new THREE.Color(0x00aaff), emissiveIntensity:1.3 })
+                );
+                mesh.position.copy(sp);
+                scene.add(mesh);
+                iceShards.push({ mesh, pos: sp.clone(), vel: dir.clone().multiplyScalar(IS_SPEED), age:0 });
+            });
+        }
+
+        // Ground freeze AoE — spawns ring of ice shards outward from Glacius
+        const freezeShards = [];
+        function spawnFreezeWave() {
+            const numShards = 12;
+            for (let i = 0; i < numShards; i++) {
+                const angle = (i / numShards) * Math.PI * 2;
+                const sp = new THREE.Vector3(glacius.pos.x, glacius.pos.y - 1, glacius.pos.z);
+                const dir = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
+                const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.6, 0.3, 0.6),
+                    new THREE.MeshLambertMaterial({ color:0xaaeeff, emissive:new THREE.Color(0x44bbff), emissiveIntensity:0.8 })
+                );
+                mesh.position.copy(sp);
+                scene.add(mesh);
+                freezeShards.push({ mesh, pos: sp.clone(), vel: dir.multiplyScalar(8), age: 0 });
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // FIREBALLS
+        // ═══════════════════════════════════════════════════════════
+        const fireballs = [];
+        const FB_SPEED = 9;
+
+        function spawnFireball() {
+            const spawnPos = new THREE.Vector3(
+                dragon.pos.x - Math.sin(dragon.angle) * 3,
+                dragon.pos.y + 3.5,
+                dragon.pos.z - Math.cos(dragon.angle) * 3
+            );
+            const dir = new THREE.Vector3(
+                ps.pos.x - spawnPos.x,
+                (ps.pos.y + 1.5) - spawnPos.y,
+                ps.pos.z - spawnPos.z
+            ).normalize();
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.6, 0.6),
+                new THREE.MeshLambertMaterial({ color:0xff5500, emissive:new THREE.Color(0xff2200), emissiveIntensity:1.5 })
+            );
+            mesh.position.copy(spawnPos);
+            scene.add(mesh);
+            fireballs.push({ mesh, pos: spawnPos.clone(), vel: dir.clone().multiplyScalar(FB_SPEED), age: 0 });
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // EXPLOSIONS
+        // ═══════════════════════════════════════════════════════════
+        function spawnExplosion() {
+            const colors = [0xff3300,0xff6600,0xffaa00,0xffff00,0xffffff,0xff2200];
+            for (let i = 0; i < 22; i++) {
+                const s = 0.3 + Math.random() * 0.9;
+                const p = mkBox(s, s, s, colors[Math.floor(Math.random()*colors.length)]);
+                p.position.copy(dragon.pos).add(new THREE.Vector3(
+                    (Math.random()-0.5)*3,
+                    Math.random()*2,
+                    (Math.random()-0.5)*3
+                ));
+                const vel = new THREE.Vector3(
+                    (Math.random()-0.5)*14,
+                    4+Math.random()*10,
+                    (Math.random()-0.5)*14
+                );
+                scene.add(p);
+                dragon.explodeParticles.push({ mesh:p, vel, age:0 });
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // MAIN GAME LOOP
+        // ═══════════════════════════════════════════════════════════
+        let prevTime = performance.now();
+        let groundSwordSpinTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            const dt = Math.min((now - prevTime) / 1000, 0.05);
+            prevTime = now;
+
+            groundSwordSpinTime += dt;
+
+            if (ps.dead) {
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // ── Player movement ──
+            if (!victory.active) {
+                if (keys['ArrowLeft'] || keys['KeyA']) ps.angle += ROTATE_SPEED * dt;
+                if (keys['ArrowRight'] || keys['KeyD']) ps.angle -= ROTATE_SPEED * dt;
+            }
+
+            const mz = !victory.active ? (keys['ArrowUp'] || keys['KeyW'] ? -1 : 0) + (keys['ArrowDown'] || keys['KeyS'] ? 1 : 0) : 0;
+            ps.moving = mz !== 0;
+
+            if (ps.moving) {
+                _eu.set(0, ps.angle, 0);
+                _fwd.set(0, 0, mz).applyEuler(_eu).normalize();
+                ps.pos.x += _fwd.x * MOVE_SPEED * dt;
+                ps.pos.z += _fwd.z * MOVE_SPEED * dt;
+                ps.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.x));
+                ps.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.z));
+            }
+
+            // ── Temple collision (only in level 1) ──
+            if (currentLevel === 1) {
+                const tx = ps.pos.x - DRAG_X, tz = ps.pos.z - DRAG_Z;
+                const M = 0.5;
+                if (tx > -16 && tx < 16 && tz > -14 && tz < 14) {
+                    if (tx > 16 - M) ps.pos.x = DRAG_X + 16 - M;
+                    if (tz < -14 + M) ps.pos.z = DRAG_Z - 14 + M;
+                    if (tz > 14 - M) ps.pos.z = DRAG_Z + 14 - M;
+                    if (tx < -16 + M && Math.abs(tz) > 5.5) ps.pos.x = DRAG_X - 16 + M;
+                }
+            }
+
+            // ── Jump & gravity ──
+            if (!victory.active && (keys['Space'] || keys['KeyE']) && ps.onGround) {
+                ps.velY = JUMP_VEL;
+                ps.onGround = false;
+            }
+
+            const groundY = getTerrainHeight(ps.pos.x, ps.pos.z);
+            if (ps.onGround) {
+                ps.pos.y = groundY;
+                ps.velY = 0;
+            } else {
+                ps.velY -= GRAVITY * dt;
+                ps.pos.y += ps.velY * dt;
+                if (ps.pos.y <= groundY) {
+                    ps.pos.y = groundY;
+                    ps.velY = 0;
+                    ps.onGround = true;
+                }
+            }
+
+            // ── Sync George ──
+            georgeRoot.position.copy(ps.pos);
+            if (ps.onGround) {
+                const tn = getTerrainNormal(ps.pos.x, ps.pos.z);
+                _slopeQ.setFromUnitVectors(_worldUp, tn);
+                _faceQ.setFromAxisAngle(_yAxis, ps.angle);
+                georgeRoot.quaternion.multiplyQuaternions(_slopeQ, _faceQ);
+            } else {
+                georgeRoot.rotation.set(0, ps.angle, 0);
+            }
+
+            // ── Walk animation ──
+            if (ps.moving) ps.walkCycle += dt * 7;
+            const sw = Math.sin(ps.walkCycle);
+            legLP.rotation.x = sw * 0.55;
+            legRP.rotation.x = -sw * 0.55;
+            headPivot.rotation.x = ps.moving ? Math.sin(ps.walkCycle * 2) * 0.04 : 0;
+
+            if (!swing.active && !victory.active) {
+                armLP.rotation.x = -sw * 0.45;
+                armRP.rotation.x = sw * 0.45;
+            }
+
+            // ── Camera ──
+            const dxC = ps.pos.x - DRAG_X, dzC = ps.pos.z - DRAG_Z;
+            const inTemple = currentLevel === 1 && Math.sqrt(dxC*dxC + dzC*dzC) < TEMPLE_COMBAT_DIST;
+
+            const dxI = ps.pos.x - GLAC_X, dzI = ps.pos.z - GLAC_Z;
+            const inIceTemple = currentLevel === 2 && !glacius.exploding && Math.sqrt(dxI*dxI + dzI*dzI) < ICE_COMBAT_DIST;
+
+            // ── CHECKPOINT: save when first entering boss combat area ──
+            if (inTemple && dragon.alive && !checkpointSavedForDragon) {
+                checkpointSavedForDragon = true;
+                saveCheckpoint('dragon');
+            }
+            if (inIceTemple && glacius.alive && !checkpointSavedForGlacius) {
+                checkpointSavedForGlacius = true;
+                saveCheckpoint('glacius');
+            }
+
+            if (victory.active) {
+                victory.timer += dt;
+                georgeRoot.visible = true;
+                fpArm.visible = false;
+
+                if (victory.timer <= dt + 0.01) {
+                    const hillTop = getTerrainHeight(0, 0);
+                    ps.pos.set(0, hillTop, 0);
+                    ps.velY = 0;
+                    ps.onGround = true;
+                    ps.angle = Math.PI;
+                    camera.position.set(0, hillTop - 4, 22);
+                }
+
+                _cTgt.set(0, getTerrainHeight(0, 0) - 2, 30);
+                camera.position.lerp(_cTgt, 0.015);
+                camera.lookAt(0, getTerrainHeight(0, 0) + 5, 0);
+
+                const armT = Math.min(victory.timer / 0.6, 1.0);
+                armRP.rotation.x = -2.7 * armT;
+                armLP.rotation.x = -2.1 * armT;
+
+                if (currentLevel === 1) {
+                    if (victory.timer > 4.5 && victory.timer < 7.0) {
+                        document.getElementById('level-transition').style.display = 'block';
+                        document.getElementById('level-transition').innerHTML = 'THE EMBER WASTES GROW COLD...' + '<span class="sub">❄ A NEW EVIL AWAKENS ❄</span>';
+                    }
+                    if (victory.timer >= 7.0 && !level2StartedFlag) {
+                        level2StartedFlag = true;
+                        startLevel2();
+                    }
+                }
+            } else if (inTemple || inIceTemple) {
+                georgeRoot.visible = false;
+                camera.position.set(ps.pos.x, ps.pos.y + 1.6, ps.pos.z);
+                camera.lookAt(
+                    ps.pos.x - Math.sin(ps.angle) * 10,
+                    ps.pos.y + 1.6,
+                    ps.pos.z - Math.cos(ps.angle) * 10
+                );
+
+                if (sword.pickedUp) {
+                    fpArm.visible = true;
+                    const fpFwdX = -Math.sin(ps.angle), fpFwdZ = -Math.cos(ps.angle);
+                    const fpRtX = Math.cos(ps.angle), fpRtZ = -Math.sin(ps.angle);
+                    fpArm.position.set(
+                        camera.position.x + fpFwdX * 0.5 + fpRtX * 0.4,
+                        camera.position.y - 0.26,
+                        camera.position.z + fpFwdZ * 0.5 + fpRtZ * 0.4
+                    );
+                    fpArm.rotation.set(0, ps.angle, 0);
+
+                    if (swing.active) {
+                        const t = swing.timer / swing.duration;
+                        let a;
+                        if (t < 0.25) a = -0.6 * (t / 0.25);
+                        else if (t < 0.75) a = -0.6 + 2.4 * ((t - 0.25) / 0.5);
+                        else a = 1.8 * (1 - (t - 0.75) / 0.25);
+                        fpArm.rotation.x = a;
+                    } else {
+                        fpArm.rotation.x = 0;
+                    }
+                } else {
+                    fpArm.visible = false;
+                }
+            } else {
+                georgeRoot.visible = true;
+                fpArm.visible = false;
+                _eu.set(0, ps.angle, 0);
+                _cOff.set(0, 5, 10).applyEuler(_eu);
+                _cTgt.copy(ps.pos).add(_cOff);
+                camera.position.lerp(_cTgt, 0.09);
+                camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
+            }
+
+            // ── Sword pickup ──
+            if (!sword.pickedUp) {
+                groundSword.rotation.y = groundSwordSpinTime * 1.2;
+                groundSword.position.y = SWORD_POS.y + Math.sin(groundSwordSpinTime * 2) * 0.12;
+
+                const dx = ps.pos.x - SWORD_POS.x, dz = ps.pos.z - SWORD_POS.z;
+                const distToSword = Math.sqrt(dx*dx + dz*dz);
+                pickupHintEl.style.display = distToSword < 6 ? 'block' : 'none';
+
+                if (distToSword < 2.5) {
+                    sword.pickedUp = true;
+                    scene.remove(groundSword);
+                    handSword.visible = true;
+                    swordHudEl.style.display = 'block';
+                    pickupHintEl.style.display = 'none';
+                }
+            }
+
+            // ── Sword swing ──
+            if (swing.active) {
+                swing.timer += dt;
+                const t = swing.timer / swing.duration;
+                let armAngle;
+                if (t < 0.25) armAngle = -0.6 * (t / 0.25);
+                else if (t < 0.75) armAngle = -0.6 + 2.4 * ((t - 0.25) / 0.5);
+                else armAngle = 1.8 * (1 - (t - 0.75) / 0.25);
+                armRP.rotation.x = armAngle;
+                armLP.rotation.x = sw * 0.3;
+
+                if (!swing.hitRegistered && t > 0.25 && t < 0.78) {
+                    _gFwd.set(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
+
+                    for (let si = sheepList.length - 1; si >= 0; si--) {
+                        const s = sheepList[si];
+                        if (ps.pos.distanceTo(s.pos) < 5) {
+                            _toDragon.subVectors(s.pos, ps.pos);
+                            _toDragon.y = 0;
+                            _toDragon.normalize();
+                            if (_toDragon.dot(_gFwd) > 0.4) {
+                                scene.remove(s.mesh);
+                                sheepList.splice(si, 1);
+                                addScore(1);
+                                swing.hitRegistered = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!swing.hitRegistered) {
+                        for (let ki = kangarooList.length - 1; ki >= 0; ki--) {
+                            const k = kangarooList[ki];
+                            if (ps.pos.distanceTo(k.pos) < 5) {
+                                _toDragon.subVectors(k.pos, ps.pos);
+                                _toDragon.y = 0;
+                                _toDragon.normalize();
+                                if (_toDragon.dot(_gFwd) > 0.4) {
+                                    scene.remove(k.mesh);
+                                    kangarooList.splice(ki, 1);
+                                    addScore(1);
+                                    swing.hitRegistered = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!swing.hitRegistered) {
+                        for (let pi = penguinList.length - 1; pi >= 0; pi--) {
+                            const pg = penguinList[pi];
+                            if (!pg.mesh.visible) continue;
+                            if (ps.pos.distanceTo(pg.pos) < 5) {
+                                _toDragon.subVectors(pg.pos, ps.pos);
+                                _toDragon.y = 0;
+                                _toDragon.normalize();
+                                if (_toDragon.dot(_gFwd) > 0.4) {
+                                    scene.remove(pg.mesh);
+                                    penguinList.splice(pi, 1);
+                                    addScore(1);
+                                    swing.hitRegistered = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!swing.hitRegistered && glacius.alive) {
+                        if (ps.pos.distanceTo(glacius.pos) < 8) {
+                            _toDragon.subVectors(glacius.pos, ps.pos);
+                            _toDragon.y = 0;
+                            _toDragon.normalize();
+                            if (_toDragon.dot(_gFwd) > 0.35) {
+                                hitGlacius();
+                                swing.hitRegistered = true;
+                            }
+                        }
+                    }
+
+                    if (!swing.hitRegistered && dragon.alive) {
+                        const distToDragon = ps.pos.distanceTo(dragon.pos);
+                        if (distToDragon < 8) {
+                            _toDragon.subVectors(dragon.pos, ps.pos);
+                            _toDragon.y = 0;
+                            _toDragon.normalize();
+                            if (_toDragon.dot(_gFwd) > 0.35) {
+                                hitDragon();
+                                swing.hitRegistered = true;
+                            }
+                        }
+                    }
+                }
+
+                if (swing.timer >= swing.duration) {
+                    swing.active = false;
+                    swing.cooldown = 0.25;
+                    armRP.rotation.x = 0;
+                }
+            }
+
+            if (swing.cooldown > 0) swing.cooldown -= dt;
+
+            // ── Sheep AI ──
+            sheepList.forEach(s => {
+                s.walkTimer -= dt;
+                if (s.walkTimer <= 0) {
+                    s.walking = Math.random() < 0.65;
+                    s.angle = Math.random() * Math.PI * 2;
+                    s.speed = 1.2 + Math.random() * 0.8;
+                    s.walkTimer = s.walking ? (2+Math.random()*3) : (1+Math.random()*2);
+                }
+                if (s.walking) {
+                    s.pos.x += Math.sin(s.angle) * s.speed * dt;
+                    s.pos.z += Math.cos(s.angle) * s.speed * dt;
+                    s.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, s.pos.x));
+                    s.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, s.pos.z));
+                    s.walkCycle += dt * 5;
+                    const ssw = Math.sin(s.walkCycle) * 0.32;
+                    s.legs.fl.rotation.x = ssw;
+                    s.legs.fr.rotation.x = -ssw;
+                    s.legs.bl.rotation.x = -ssw;
+                    s.legs.br.rotation.x = ssw;
+                }
+                s.pos.y = getTerrainHeight(s.pos.x, s.pos.z);
+                s.mesh.position.copy(s.pos);
+                s.mesh.rotation.y = s.angle;
+            });
+
+            // ── Kangaroo AI ──
+            kangarooList.forEach(k => {
+                k.hopTimer -= dt;
+                if (k.onGround && k.hopTimer <= 0) {
+                    k.angle = Math.random() * Math.PI * 2;
+                    k.velY = 7.5;
+                    k.onGround = false;
+                    k.hopTimer = 1.8 + Math.random() * 2.4;
+                }
+                if (!k.onGround) {
+                    k.pos.x -= Math.sin(k.angle) * 3.5 * dt;
+                    k.pos.z -= Math.cos(k.angle) * 3.5 * dt;
+                    k.velY -= 22 * dt;
+                    k.pos.y += k.velY * dt;
+                }
+                const groundY = getTerrainHeight(k.pos.x, k.pos.z);
+                if (k.pos.y <= groundY) {
+                    k.pos.y = groundY;
+                    k.velY = 0;
+                    k.onGround = true;
+                }
+                k.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.x));
+                k.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.z));
+
+                const legAngle = k.onGround ? 0 : -0.7 + Math.max(0, k.velY) * 0.05;
+                k.hlL.rotation.x = legAngle;
+                k.hlR.rotation.x = legAngle;
+                k.mesh.position.copy(k.pos);
+                k.mesh.rotation.y = k.angle;
+            });
+
+            // ── Penguin AI ──
+            penguinList.forEach(pg => {
+                if (!pg.mesh.visible) return;
+                pg.walkTimer -= dt;
+                if (pg.walkTimer <= 0) {
+                    pg.walking = Math.random() < 0.7;
+                    pg.angle = Math.random() * Math.PI * 2;
+                    pg.walkTimer = pg.walking ? (2+Math.random()*3) : (0.8+Math.random()*1.5);
+                }
+                if (pg.walking) {
+                    pg.pos.x -= Math.sin(pg.angle) * 1.0 * dt;
+                    pg.pos.z -= Math.cos(pg.angle) * 1.0 * dt;
+                    pg.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, pg.pos.x));
+                    pg.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, pg.pos.z));
+                    pg.walkCycle += dt * 5;
+                    const pw = Math.sin(pg.walkCycle) * 0.28;
+                    pg.flL.rotation.x = pw;
+                    pg.flR.rotation.x = -pw;
+                }
+                pg.pos.y = getTerrainHeight(pg.pos.x, pg.pos.z);
+                pg.mesh.position.copy(pg.pos);
+                pg.mesh.rotation.y = pg.angle;
+            });
+
+            // ── Glacius AI (ENHANCED — harder boss) ──
+            if (glacius.alive && !glacius.exploding) {
+                const gt = now * 0.001;
+                glacius.pos.y = GLAC_BASE_Y + Math.sin(gt * 1.6) * 0.6;
+                glacius.mesh.position.y = glacius.pos.y;
+
+                const gFlap = Math.sin(gt * 3.2) * 0.45;
+                glacius.wingGLP.rotation.z = gFlap;
+                glacius.wingGRP.rotation.z = -gFlap;
+
+                const gDx = ps.pos.x - GLAC_X, gDz = ps.pos.z - GLAC_Z;
+                const gDist = Math.sqrt(gDx*gDx + gDz*gDz);
+
+                // Faster tracking
+                if (gDist < 45) {
+                    const wantA = Math.atan2(gDx, gDz);
+                    let gdiff = wantA - glacius.angle;
+                    while (gdiff > Math.PI) gdiff -= 2*Math.PI;
+                    while (gdiff < -Math.PI) gdiff += 2*Math.PI;
+                    glacius.angle += gdiff * Math.min(dt * 2.2, 1);
+                }
+                glacius.mesh.rotation.y = glacius.angle;
+
+                if (glacius.hitFlash > 0) {
+                    glacius.hitFlash -= dt;
+                    const f = Math.max(0, glacius.hitFlash) / 0.25;
+                    glaciusParts.eyeMatGL.emissiveIntensity = 1.3 + f * 2;
+                    glaciusParts.eyeMatGR.emissiveIntensity = 1.3 + f * 2;
+                }
+
+                // Dash attack
+                if (glacius.dashActive) {
+                    glacius.dashTimer -= dt;
+                    glacius.pos.x += glacius.dashVelX * dt;
+                    glacius.pos.z += glacius.dashVelZ * dt;
+                    glacius.mesh.position.x = glacius.pos.x;
+                    glacius.mesh.position.z = glacius.pos.z;
+
+                    // Damage player on dash contact
+                    if (ps.pos.distanceTo(glacius.pos) < 4) {
+                        hitPlayer();
+                    }
+
+                    if (glacius.dashTimer <= 0) {
+                        glacius.dashActive = false;
+                        // Return to home position
+                        glacius.pos.x = GLAC_X;
+                        glacius.pos.z = GLAC_Z;
+                        glacius.mesh.position.x = GLAC_X;
+                        glacius.mesh.position.z = GLAC_Z;
+                    }
+                }
+
+                if (gDist < ICE_COMBAT_DIST) {
+                    // Main attack timer — alternates between single, burst, and freeze
+                    glacius.attackTimer -= dt;
+                    if (glacius.attackTimer <= 0) {
+                        glacius.attackPattern = (glacius.attackPattern + 1) % 4;
+                        if (glacius.attackPattern === 0) {
+                            spawnIceShard();
+                            glacius.attackTimer = 1.5 + Math.random() * 0.8;
+                        } else if (glacius.attackPattern === 1) {
+                            spawnIceShardBurst();
+                            glacius.attackTimer = 2.0 + Math.random() * 0.5;
+                        } else if (glacius.attackPattern === 2) {
+                            spawnIceShard();
+                            glacius.attackTimer = 1.2 + Math.random() * 0.6;
+                        } else {
+                            spawnIceShardBurst();
+                            glacius.attackTimer = 1.8 + Math.random() * 0.5;
+                        }
+                    }
+
+                    // Freeze wave timer
+                    glacius.freezeTimer -= dt;
+                    if (glacius.freezeTimer <= 0) {
+                        spawnFreezeWave();
+                        glacius.freezeTimer = 5 + Math.random() * 2;
+                    }
+
+                    // Dash cooldown
+                    if (!glacius.dashActive) {
+                        glacius.dashCooldown -= dt;
+                        if (glacius.dashCooldown <= 0 && gDist > 6) {
+                            glacius.dashActive = true;
+                            glacius.dashTimer = 0.6;
+                            const dashDir = new THREE.Vector3(ps.pos.x - glacius.pos.x, 0, ps.pos.z - glacius.pos.z).normalize();
+                            glacius.dashVelX = dashDir.x * 25;
+                            glacius.dashVelZ = dashDir.z * 25;
+                            glacius.dashCooldown = 7 + Math.random() * 3;
+                        }
+                    }
+                } else {
+                    glacius.attackTimer = Math.max(glacius.attackTimer, 1.0);
+                }
+            }
+
+            // ── Glacius explosion ──
+            if (glacius.exploding) {
+                glacius.explodeAge += dt;
+                glacius.explodeParticles.forEach(p => {
+                    p.age += dt;
+                    p.vel.y -= 18 * dt;
+                    p.mesh.position.x += p.vel.x * dt;
+                    p.mesh.position.y += p.vel.y * dt;
+                    p.mesh.position.z += p.vel.z * dt;
+                    p.mesh.rotation.x += dt * 3;
+                    p.mesh.rotation.z += dt * 2;
+                    p.mesh.material.opacity = 1 - p.age / 2.0;
+                    p.mesh.material.transparent = true;
+                });
+                if (glacius.explodeAge > 2.0) {
+                    glacius.explodeParticles.forEach(p => scene.remove(p.mesh));
+                    glacius.explodeParticles = [];
+                    glacius.exploding = false;
+                }
+            }
+
+            // ── Ice shard update ──
+            for (let i = iceShards.length - 1; i >= 0; i--) {
+                const sh = iceShards[i];
+                sh.age += dt;
+                sh.pos.x += sh.vel.x * dt;
+                sh.pos.y += sh.vel.y * dt;
+                sh.pos.z += sh.vel.z * dt;
+                sh.mesh.position.copy(sh.pos);
+                sh.mesh.rotation.x += dt * 5;
+                sh.mesh.rotation.z += dt * 4;
+
+                if (sh.pos.distanceTo(ps.pos) < 1.8) {
+                    hitPlayer();
+                    scene.remove(sh.mesh);
+                    iceShards.splice(i, 1);
+                    continue;
+                }
+
+                if (sh.age > 5 || sh.pos.y < getTerrainHeight(sh.pos.x, sh.pos.z) - 0.5) {
+                    scene.remove(sh.mesh);
+                    iceShards.splice(i, 1);
+                }
+            }
+
+            // ── Freeze shard update ──
+            for (let i = freezeShards.length - 1; i >= 0; i--) {
+                const fs = freezeShards[i];
+                fs.age += dt;
+                fs.pos.x += fs.vel.x * dt;
+                fs.pos.z += fs.vel.z * dt;
+                fs.pos.y = getTerrainHeight(fs.pos.x, fs.pos.z) + 0.3;
+                fs.mesh.position.copy(fs.pos);
+                fs.mesh.rotation.y += dt * 3;
+
+                if (fs.pos.distanceTo(ps.pos) < 1.5) {
+                    hitPlayer();
+                    scene.remove(fs.mesh);
+                    freezeShards.splice(i, 1);
+                    continue;
+                }
+
+                if (fs.age > 3) {
+                    scene.remove(fs.mesh);
+                    freezeShards.splice(i, 1);
+                }
+            }
+
+            // ── Level 2 HUD ──
+            if (currentLevel === 2 && glacius.alive) {
+                const gDxH = ps.pos.x - GLAC_X, gDzH = ps.pos.z - GLAC_Z;
+                const gDistH = Math.sqrt(gDxH*gDxH + gDzH*gDzH);
+                document.getElementById('glacius-hud').style.display = gDistH < ICE_COMBAT_DIST ? 'block' : 'none';
+            } else {
+                // No ice-temple-hint since we removed the temple
+            }
+
+            // ── Dragon AI ──
+            if (dragon.alive && !dragon.exploding) {
+                const t = now * 0.001;
+                dragon.pos.y = DRAG_BASE_Y + Math.sin(t * 1.8) * 0.55;
+                dragon.mesh.position.y = dragon.pos.y;
+
+                const flap = Math.sin(t * 3.5) * 0.42;
+                dragon.wingLP.rotation.z = flap;
+                dragon.wingRP.rotation.z = -flap;
+
+                const dxd = ps.pos.x - DRAG_X, dzd = ps.pos.z - DRAG_Z;
+                const distPlayer = Math.sqrt(dxd*dxd + dzd*dzd);
+
+                if (distPlayer < 40) {
+                    const wantAngle = Math.atan2(dxd, dzd);
+                    let diff = wantAngle - dragon.angle;
+                    while (diff > Math.PI) diff -= 2*Math.PI;
+                    while (diff < -Math.PI) diff += 2*Math.PI;
+                    dragon.angle += diff * Math.min(dt * 1.5, 1);
+                }
+                dragon.mesh.rotation.y = dragon.angle;
+
+                if (dragon.hitFlash > 0) {
+                    dragon.hitFlash -= dt;
+                    const f = Math.max(0, dragon.hitFlash) / 0.25;
+                    dragonParts.eyeMatL.emissiveIntensity = 0.9 + f * 2;
+                    dragonParts.eyeMatR.emissiveIntensity = 0.9 + f * 2;
+                }
+
+                if (distPlayer < TEMPLE_COMBAT_DIST) {
+                    dragon.attackTimer -= dt;
+                    if (dragon.attackTimer <= 0) {
+                        spawnFireball();
+                        dragon.attackTimer = 3.5 + Math.random() * 1.5;
+                    }
+                } else {
+                    dragon.attackTimer = Math.max(dragon.attackTimer, 1.5);
+                }
+            }
+
+            // ── Dragon explosion ──
+            if (dragon.exploding) {
+                dragon.explodeAge += dt;
+                dragon.explodeParticles.forEach(p => {
+                    p.age += dt;
+                    p.vel.y -= 18 * dt;
+                    p.mesh.position.x += p.vel.x * dt;
+                    p.mesh.position.y += p.vel.y * dt;
+                    p.mesh.position.z += p.vel.z * dt;
+                    p.mesh.rotation.x += dt * 3;
+                    p.mesh.rotation.z += dt * 2;
+                    const life = p.age / 2.0;
+                    p.mesh.material.opacity = 1 - life;
+                    p.mesh.material.transparent = true;
+                });
+                if (dragon.explodeAge > 2.0) {
+                    dragon.explodeParticles.forEach(p => scene.remove(p.mesh));
+                    dragon.explodeParticles = [];
+                    dragon.exploding = false;
+                }
+            }
+
+            // ── Fireball update ──
+            for (let i = fireballs.length - 1; i >= 0; i--) {
+                const fb = fireballs[i];
+                fb.age += dt;
+                fb.pos.x += fb.vel.x * dt;
+                fb.pos.y += fb.vel.y * dt;
+                fb.pos.z += fb.vel.z * dt;
+                fb.mesh.position.copy(fb.pos);
+                fb.mesh.rotation.x += dt * 4;
+                fb.mesh.rotation.z += dt * 3;
+
+                if (fb.pos.distanceTo(ps.pos) < 1.8) {
+                    hitPlayer();
+                    scene.remove(fb.mesh);
+                    fireballs.splice(i, 1);
+                    continue;
+                }
+
+                if (fb.age > 5 || fb.pos.y < getTerrainHeight(fb.pos.x, fb.pos.z) - 0.5) {
+                    scene.remove(fb.mesh);
+                    fireballs.splice(i, 1);
+                }
+            }
+
+            // ── Temple HUD ──
+            if (dragon.alive) {
+                const dxT = ps.pos.x - DRAG_X, dzT = ps.pos.z - DRAG_Z;
+                const distToTemple = Math.sqrt(dxT*dxT + dzT*dzT);
+                templeHintEl.style.display = (distToTemple > TEMPLE_COMBAT_DIST && distToTemple < 40) ? 'block' : 'none';
+                dragonHudEl.style.display = distToTemple < TEMPLE_COMBAT_DIST ? 'block' : 'none';
+            }
+
+            if (ps.invincible > 0) ps.invincible -= dt;
+
+            renderer.render(scene, camera);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // HIT DRAGON
+        // ═══════════════════════════════════════════════════════════
+        function hitDragon() {
+            dragon.hp--;
+            dragon.hitFlash = 0.25;
+            flashHitOverlay();
+            updateHpBar();
+            if (dragon.hp <= 0) {
+                dragon.alive = false;
+                dragon.mesh.visible = false;
+                dragon.exploding = true;
+                spawnExplosion();
+                addScore(10);
+                victoryMsgEl.style.display = 'block';
+                document.getElementById('dragon-hud').style.display = 'none';
+                victory.active = true;
+                victory.timer = 0;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // HIT GLACIUS
+        // ═══════════════════════════════════════════════════════════
+        function updateGlaciusHpBar() {
+            document.getElementById('glacius-hp-fill').style.width = (glacius.hp / GLACIUS_MAX_HP * 100) + '%';
+        }
+
+        function spawnGlaciusExplosion() {
+            const colors = [0x80d8f0, 0x00aaff, 0xaaddff, 0xffffff, 0x0055cc, 0x44aaee];
+            for (let i = 0; i < 22; i++) {
+                const s = 0.3 + Math.random()*0.9;
+                const p = mkBox(s,s,s, colors[Math.floor(Math.random()*colors.length)]);
+                p.position.copy(glacius.pos).add(new THREE.Vector3(
+                    (Math.random()-0.5)*3,
+                    Math.random()*2,
+                    (Math.random()-0.5)*3
+                ));
+                const vel = new THREE.Vector3(
+                    (Math.random()-0.5)*14,
+                    4+Math.random()*10,
+                    (Math.random()-0.5)*14
+                );
+                scene.add(p);
+                glacius.explodeParticles.push({ mesh:p, vel, age:0 });
+            }
+        }
+
+        function hitGlacius() {
+            glacius.hp--;
+            glacius.hitFlash = 0.25;
+            flashHitOverlay();
+            updateGlaciusHpBar();
+            if (glacius.hp <= 0) {
+                glacius.alive = false;
+                glacius.mesh.visible = false;
+                glacius.exploding = true;
+                glacius.dashActive = false;
+                spawnGlaciusExplosion();
+                addScore(15);
+                document.getElementById('glacius-victory-msg').style.display = 'block';
+                document.getElementById('glacius-hud').style.display = 'none';
+                victoryMsgEl.style.display = 'none';
+                victory.active = true;
+                victory.timer = 0;
+
+                // Clean up remaining freeze shards
+                freezeShards.forEach(fs => scene.remove(fs.mesh));
+                freezeShards.length = 0;
+                iceShards.forEach(sh => scene.remove(sh.mesh));
+                iceShards.length = 0;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // START LEVEL 2
+        // ═══════════════════════════════════════════════════════════
+        function startLevel2() {
+            currentLevel = 2;
+            scene.background = new THREE.Color(0x7ab0cc);
+            scene.fog.color.set(0x7ab0cc);
+            terrain.material.color.set(0xd4eef8);
+            sun.color.set(0xc8e8f8);
+            sun.intensity = 0.7;
+
+            // Hide fire temple and mural in the ice world
+            fireTempleGroup.visible = false;
+            fireMuralPlane.visible = false;
+
+            // Glacius fights in the open — no ice temple
+            glacius.mesh.visible = true;
+            glacius.alive = true;
+
+            penguinList.forEach(p => { p.mesh.visible = true; });
+
+            const startX = GLAC_X - 28, startZ = GLAC_Z;
+            ps.pos.set(startX, getTerrainHeight(startX, startZ), startZ);
+            ps.velY = 0;
+            ps.onGround = true;
+            ps.angle = 0;
+            ps.hp = ps.maxHp;
+            ps.invincible = 2;
+            updatePlayerHp();
+
+            victoryMsgEl.style.display = 'none';
+            document.getElementById('level-transition').style.display = 'none';
+            updateGlaciusHpBar();
+            victory.active = false;
+
+            // Reset checkpoint flag for Glacius
+            checkpointSavedForGlacius = false;
+        }
+
+        animate();
+    </script>
 </body>
 </html>
