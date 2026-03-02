@@ -494,12 +494,23 @@
         let checkpointSavedForGlacius = false;
 
         function saveCheckpoint(bossName) {
+            // Save a fixed respawn point right at the boss battle entrance
+            let respawnX, respawnZ, respawnAngle;
+            if (bossName === 'dragon') {
+                respawnX = DRAG_X - 16;
+                respawnZ = DRAG_Z;
+                respawnAngle = Math.atan2(DRAG_X - respawnX, DRAG_Z - respawnZ);
+            } else {
+                respawnX = GLAC_X - 16;
+                respawnZ = GLAC_Z;
+                respawnAngle = Math.atan2(GLAC_X - respawnX, GLAC_Z - respawnZ);
+            }
             checkpoint = {
                 level: currentLevel,
-                posX: ps.pos.x,
-                posY: ps.pos.y,
-                posZ: ps.pos.z,
-                angle: ps.angle,
+                posX: respawnX,
+                posY: getTerrainHeight(respawnX, respawnZ),
+                posZ: respawnZ,
+                angle: respawnAngle,
                 score: score,
                 bossName: bossName
             };
@@ -522,6 +533,8 @@
             fireballs.length = 0;
             iceShards.forEach(sh => scene.remove(sh.mesh));
             iceShards.length = 0;
+            freezeShards.forEach(fs => scene.remove(fs.mesh));
+            freezeShards.length = 0;
 
             // Restore score
             score = checkpoint.score;
@@ -734,6 +747,108 @@
             );
             plane.position.set(DRAG_X + 15.5, TEMPLE_Y + 7, DRAG_Z);
             plane.rotation.y = -Math.PI / 2;
+            scene.add(plane);
+            return plane;
+        })();
+
+        // ═══════════════════════════════════════════════════════════
+        // ICE TEMPLE OF GLACIUS
+        // ═══════════════════════════════════════════════════════════
+        const iceTempleGroup = (function buildIceTemple() {
+            const g = new THREE.Group();
+            const W = 16, D = 14, WH = 9, WT = 1.8, EH = 5.5;
+            const I1 = 0x8ec5d6, I2 = 0x4a8fa8, I3 = 0xcce5f0;
+
+            g.add(mkBox((W+WT)*2+4, 0.9, (D+WT)*2+4, I3, 0, -0.45, 0));
+            g.add(mkBox(WT, WH, (D+WT)*2, I2, W+WT/2, WH/2, 0));
+            g.add(mkBox((W+WT)*2, WH, WT, I2, 0, WH/2, -(D+WT/2)));
+            g.add(mkBox((W+WT)*2, WH, WT, I2, 0, WH/2, D+WT/2));
+
+            const sl = D - EH;
+            g.add(mkBox(WT, WH, sl, I2, -(W+WT/2), WH/2, -(EH+sl/2)));
+            g.add(mkBox(WT, WH, sl, I2, -(W+WT/2), WH/2, EH+sl/2));
+            g.add(mkBox(WT, WH-5, EH*2+2, I2, -(W+WT/2), 5+(WH-5)/2, 0));
+
+            [-8, 0, 8].forEach(z => {
+                g.add(mkBox(1.2, WH+1, 1.2, I3, W-3, (WH+1)/2, z));
+                g.add(mkBox(1.2, WH+1, 1.2, I3, -(W-3),(WH+1)/2, z));
+            });
+
+            const WH2 = 4, topY = WH + WH2;
+            g.add(mkBox(WT, WH2, (D+WT)*2, I1, W+WT/2, WH+WH2/2, 0));
+            g.add(mkBox((W+WT)*2, WH2, WT, I1, 0, WH+WH2/2, -(D+WT/2)));
+            g.add(mkBox((W+WT)*2, WH2, WT, I1, 0, WH+WH2/2, D+WT/2));
+            g.add(mkBox(WT, WH2, (D+WT)*2, I1, -(W+WT/2), WH+WH2/2, 0));
+
+            const mBS = 4.2, mBH = 2.4;
+            for (let mz = -(D+WT); mz <= D+WT; mz += mBS) {
+                g.add(mkBox(WT+0.4, mBH, 1.8, I3, W+WT/2, topY+mBH/2, mz));
+                g.add(mkBox(WT+0.4, mBH, 1.8, I3, -(W+WT/2), topY+mBH/2, mz));
+            }
+
+            [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz]) => {
+                const tx = sx*(W+WT+2.0), tz = sz*(D+WT+2.0), tH = topY+7;
+                g.add(mkBox(5.0, tH, 5.0, I1, tx, tH/2, tz));
+                g.add(mkBox(2.8, 3.5, 2.8, I3, tx, tH+1.75, tz));
+            });
+
+            g.add(mkBox(3.2, WH+3, 3.2, I3, -(W+WT/2), (WH+3)/2, -(EH+1.6)));
+            g.add(mkBox(3.2, WH+3, 3.2, I3, -(W+WT/2), (WH+3)/2, EH+1.6));
+
+            g.position.set(GLAC_X, ICE_TEMPLE_Y, GLAC_Z);
+            g.visible = false;
+            scene.add(g);
+            return g;
+        })();
+
+        const iceMuralPlane = (function buildIceMural() {
+            const CW = 960, CH = 640;
+            const cv = document.createElement('canvas');
+            cv.width = CW;
+            cv.height = CH;
+            const ctx = cv.getContext('2d');
+
+            ctx.fillStyle = '#020d1a';
+            ctx.fillRect(0, 0, CW, CH);
+
+            ctx.strokeStyle = '#1a6080';
+            ctx.lineWidth = 22;
+            ctx.strokeRect(11, 11, CW-22, CH-22);
+
+            const pix = [
+                [0,0,2,2,0,0,0,0,2,2,0,0],
+                [0,2,1,2,3,3,3,3,2,1,2,0],
+                [2,1,1,3,4,4,4,4,3,1,1,2],
+                [1,1,3,4,4,4,4,4,4,3,1,1],
+                [0,1,3,4,4,4,4,4,4,3,1,0],
+                [0,1,3,3,4,4,4,4,3,3,1,0],
+                [0,0,1,0,3,4,4,3,0,1,0,0],
+                [0,0,0,0,0,4,4,0,0,0,0,0],
+            ];
+            const clr = { 1:'#4a9ab8', 2:'#2a6080', 3:'#80d8f0', 4:'#e8f8ff' };
+            const PW = (CW-80)/12, PH = (CH-100)/8;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 12; c++) {
+                    const v = pix[r][c];
+                    if (!v) continue;
+                    ctx.fillStyle = clr[v];
+                    ctx.fillRect(40 + c*PW+3, 40 + r*PH+3, PW-6, PH-6);
+                }
+            }
+
+            ctx.fillStyle = '#80d8f0';
+            ctx.font = 'bold 44px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('THE FROZEN TERROR', CW/2, CH-30);
+
+            const tex = new THREE.CanvasTexture(cv);
+            const plane = new THREE.Mesh(
+                new THREE.PlaneGeometry(26, 14),
+                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+            );
+            plane.position.set(GLAC_X + 15.5, ICE_TEMPLE_Y + 7, GLAC_Z);
+            plane.rotation.y = -Math.PI / 2;
+            plane.visible = false;
             scene.add(plane);
             return plane;
         })();
@@ -1301,8 +1416,8 @@
                 ps.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.z));
             }
 
-            // ── Temple collision (only in level 1) ──
-            if (currentLevel === 1) {
+            // ── Fire temple collision ──
+            {
                 const tx = ps.pos.x - DRAG_X, tz = ps.pos.z - DRAG_Z;
                 const M = 0.5;
                 if (tx > -16 && tx < 16 && tz > -14 && tz < 14) {
@@ -1310,6 +1425,18 @@
                     if (tz < -14 + M) ps.pos.z = DRAG_Z - 14 + M;
                     if (tz > 14 - M) ps.pos.z = DRAG_Z + 14 - M;
                     if (tx < -16 + M && Math.abs(tz) > 5.5) ps.pos.x = DRAG_X - 16 + M;
+                }
+            }
+
+            // ── Ice temple collision (level 2) ──
+            if (currentLevel === 2) {
+                const tx2 = ps.pos.x - GLAC_X, tz2 = ps.pos.z - GLAC_Z;
+                const M2 = 0.5, IW = 16, ID = 14;
+                if (tx2 > -IW && tx2 < IW && tz2 > -ID && tz2 < ID) {
+                    if (tx2 > IW - M2) ps.pos.x = GLAC_X + IW - M2;
+                    if (tz2 < -ID + M2) ps.pos.z = GLAC_Z - ID + M2;
+                    if (tz2 > ID - M2) ps.pos.z = GLAC_Z + ID - M2;
+                    if (tx2 < -IW + M2 && Math.abs(tz2) > 5.5) ps.pos.x = GLAC_X - IW + M2;
                 }
             }
 
@@ -1591,7 +1718,7 @@
                 }
                 s.pos.y = getTerrainHeight(s.pos.x, s.pos.z);
                 s.mesh.position.copy(s.pos);
-                s.mesh.rotation.y = s.angle;
+                s.mesh.rotation.y = s.angle + Math.PI;
             });
 
             // ── Kangaroo AI ──
@@ -1664,7 +1791,7 @@
 
                 // Faster tracking
                 if (gDist < 45) {
-                    const wantA = Math.atan2(gDx, gDz);
+                    const wantA = Math.atan2(gDx, gDz) + Math.PI;
                     let gdiff = wantA - glacius.angle;
                     while (gdiff > Math.PI) gdiff -= 2*Math.PI;
                     while (gdiff < -Math.PI) gdiff += 2*Math.PI;
@@ -1818,9 +1945,10 @@
             if (currentLevel === 2 && glacius.alive) {
                 const gDxH = ps.pos.x - GLAC_X, gDzH = ps.pos.z - GLAC_Z;
                 const gDistH = Math.sqrt(gDxH*gDxH + gDzH*gDzH);
+                document.getElementById('ice-temple-hint').style.display = (gDistH > ICE_COMBAT_DIST && gDistH < 45) ? 'block' : 'none';
                 document.getElementById('glacius-hud').style.display = gDistH < ICE_COMBAT_DIST ? 'block' : 'none';
             } else {
-                // No ice-temple-hint since we removed the temple
+                document.getElementById('ice-temple-hint').style.display = 'none';
             }
 
             // ── Dragon AI ──
@@ -1837,7 +1965,7 @@
                 const distPlayer = Math.sqrt(dxd*dxd + dzd*dzd);
 
                 if (distPlayer < 40) {
-                    const wantAngle = Math.atan2(dxd, dzd);
+                    const wantAngle = Math.atan2(dxd, dzd) + Math.PI;
                     let diff = wantAngle - dragon.angle;
                     while (diff > Math.PI) diff -= 2*Math.PI;
                     while (diff < -Math.PI) diff += 2*Math.PI;
@@ -2007,11 +2135,12 @@
             sun.color.set(0xc8e8f8);
             sun.intensity = 0.7;
 
-            // Hide fire temple and mural in the ice world
+            // Show ice temple and mural, hide fire temple from ice world
             fireTempleGroup.visible = false;
             fireMuralPlane.visible = false;
+            iceTempleGroup.visible = true;
+            iceMuralPlane.visible = true;
 
-            // Glacius fights in the open — no ice temple
             glacius.mesh.visible = true;
             glacius.alive = true;
 
