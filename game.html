@@ -948,7 +948,75 @@
             .map(([x,z]) => createSheep(x,z));
 
         // ═══════════════════════════════════════════════════════════
-        // POLAR BEARS (level 2 — replace kangaroos in ice world)
+        // KANGAROOS (level 1 only)
+        // ═══════════════════════════════════════════════════════════
+        function createKangaroo(kx, kz) {
+            const B = 0x8B6914, L = 0xa07828, N = 0x222222, W = 0xd4c4a0;
+            const root = new THREE.Group();
+            // Body (upright torso)
+            root.add(mkBox(0.7, 1.1, 0.6, B, 0, 1.0, 0));
+            // Head
+            root.add(mkBox(0.45, 0.5, 0.45, B, 0, 1.85, -0.15));
+            // Snout
+            root.add(mkBox(0.25, 0.22, 0.3, L, 0, 1.7, -0.42));
+            // Nose
+            root.add(mkBox(0.1, 0.08, 0.06, N, 0, 1.74, -0.58));
+            // Eyes
+            root.add(mkBox(0.08, 0.08, 0.05, N, -0.14, 1.9, -0.38));
+            root.add(mkBox(0.08, 0.08, 0.05, N,  0.14, 1.9, -0.38));
+            // Ears (tall)
+            root.add(mkBox(0.1, 0.3, 0.06, L, -0.15, 2.2, -0.05));
+            root.add(mkBox(0.1, 0.3, 0.06, L,  0.15, 2.2, -0.05));
+            // Belly patch
+            root.add(mkBox(0.5, 0.6, 0.15, W, 0, 0.9, -0.32));
+
+            // Arms (short)
+            const armL = new THREE.Group();
+            armL.position.set(-0.42, 1.2, -0.1);
+            armL.add(mkBox(0.18, 0.5, 0.18, B, 0, -0.25, 0));
+            root.add(armL);
+            const armR = new THREE.Group();
+            armR.position.set(0.42, 1.2, -0.1);
+            armR.add(mkBox(0.18, 0.5, 0.18, B, 0, -0.25, 0));
+            root.add(armR);
+
+            // Legs (big, powerful)
+            function mkKangLeg(lx) {
+                const p = new THREE.Group();
+                p.position.set(lx, 0.55, 0);
+                p.add(mkBox(0.28, 0.7, 0.28, B, 0, -0.35, 0));
+                // Foot (large)
+                p.add(mkBox(0.22, 0.12, 0.5, L, 0, -0.72, -0.12));
+                root.add(p);
+                return p;
+            }
+            const legL = mkKangLeg(-0.25);
+            const legR = mkKangLeg(0.25);
+
+            // Tail (thick, long, angled back)
+            root.add(mkBox(0.2, 0.2, 1.2, B, 0, 0.5, 0.8));
+
+            const ky = getTerrainHeight(kx, kz);
+            root.position.set(kx, ky, kz);
+            scene.add(root);
+
+            return {
+                mesh: root,
+                pos: new THREE.Vector3(kx, ky, kz),
+                angle: Math.random() * Math.PI * 2,
+                walkCycle: 0,
+                walkTimer: Math.random() * 3,
+                walking: true,
+                speed: 2.0 + Math.random() * 0.8,
+                legL, legR, armL, armR
+            };
+        }
+
+        const kangarooList = [[22,14],[-18,26],[14,-24],[-26,-10],[32,-18],[-10,34],[24,30],[-30,8]]
+            .map(([x,z]) => createKangaroo(x,z));
+
+        // ═══════════════════════════════════════════════════════════
+        // POLAR BEARS (level 2 only)
         // ═══════════════════════════════════════════════════════════
         function createPolarBear(bx, bz) {
             const W = 0xf0ece4, L = 0xd8d2c8, N = 0x222222;
@@ -1501,7 +1569,7 @@
             }
 
             // ── Temple wall collision (circle vs AABB per wall segment) ──
-            {
+            if (currentLevel === 1) {
                 let [wx, wz] = resolveWallCollisions(ps.pos.x, ps.pos.z, fireWalls);
                 ps.pos.x = wx; ps.pos.z = wz;
             }
@@ -1706,6 +1774,25 @@
                     }
 
                     if (!swing.hitRegistered) {
+                        for (let ki = kangarooList.length - 1; ki >= 0; ki--) {
+                            const k = kangarooList[ki];
+                            if (!k.mesh.visible) continue;
+                            if (ps.pos.distanceTo(k.pos) < 5) {
+                                _toDragon.subVectors(k.pos, ps.pos);
+                                _toDragon.y = 0;
+                                _toDragon.normalize();
+                                if (_toDragon.dot(_gFwd) > 0.4) {
+                                    scene.remove(k.mesh);
+                                    kangarooList.splice(ki, 1);
+                                    addScore(1);
+                                    swing.hitRegistered = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!swing.hitRegistered) {
                         for (let bi = polarBearList.length - 1; bi >= 0; bi--) {
                             const b = polarBearList[bi];
                             if (!b.mesh.visible) continue;
@@ -1802,6 +1889,38 @@
                 s.pos.y = getTerrainHeight(s.pos.x, s.pos.z);
                 s.mesh.position.copy(s.pos);
                 s.mesh.rotation.y = s.angle + Math.PI;
+            });
+
+            // ── Kangaroo AI ──
+            kangarooList.forEach(k => {
+                if (!k.mesh.visible) return;
+                k.walkTimer -= dt;
+                if (k.walkTimer <= 0) {
+                    k.walking = Math.random() < 0.7;
+                    k.angle = Math.random() * Math.PI * 2;
+                    k.speed = 2.0 + Math.random() * 0.8;
+                    k.walkTimer = k.walking ? (1.5 + Math.random() * 2.5) : (0.8 + Math.random() * 1.5);
+                }
+                if (k.walking) {
+                    k.pos.x -= Math.sin(k.angle) * k.speed * dt;
+                    k.pos.z -= Math.cos(k.angle) * k.speed * dt;
+                    k.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.x));
+                    k.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.z));
+                    k.walkCycle += dt * 5;
+                    const kw = Math.sin(k.walkCycle) * 0.4;
+                    k.legL.rotation.x = kw;
+                    k.legR.rotation.x = -kw;
+                    k.armL.rotation.x = -kw * 0.3;
+                    k.armR.rotation.x = kw * 0.3;
+                } else {
+                    k.legL.rotation.x = 0;
+                    k.legR.rotation.x = 0;
+                    k.armL.rotation.x = 0;
+                    k.armR.rotation.x = 0;
+                }
+                k.pos.y = getTerrainHeight(k.pos.x, k.pos.z);
+                k.mesh.position.copy(k.pos);
+                k.mesh.rotation.y = k.angle + Math.PI;
             });
 
             // ── Polar Bear AI ──
@@ -2231,6 +2350,7 @@
             penguinList.forEach(p => { p.mesh.visible = true; });
             polarBearList.forEach(b => { b.mesh.visible = true; });
             sheepList.forEach(s => { s.mesh.visible = false; });
+            kangarooList.forEach(k => { k.mesh.visible = false; });
 
             const startX = GLAC_X - 28, startZ = GLAC_Z;
             ps.pos.set(startX, getTerrainHeight(startX, startZ), startZ);
