@@ -631,6 +631,49 @@
 
         let currentLevel = 1;
 
+        // ═══════════════════════════════════════════════════════════
+        // WALL COLLISION SYSTEM
+        // ═══════════════════════════════════════════════════════════
+        const PLAYER_R = 0.6;
+
+        function buildWallList(cx, cz, W, D, WT, EH, towerSize) {
+            const th = towerSize / 2;
+            return [
+                [cx + W, cz - (D+WT), cx + W + WT, cz + (D+WT)],
+                [cx - (W+WT), cz - (D+WT), cx + (W+WT), cz - D],
+                [cx - (W+WT), cz + D, cx + (W+WT), cz + (D+WT)],
+                [cx - (W+WT), cz - D, cx - W, cz - EH],
+                [cx - (W+WT), cz + EH, cx - W, cz + D],
+                [cx+(W+WT+2)-th, cz-(D+WT+2)-th, cx+(W+WT+2)+th, cz-(D+WT+2)+th],
+                [cx+(W+WT+2)-th, cz+(D+WT+2)-th, cx+(W+WT+2)+th, cz+(D+WT+2)+th],
+                [cx-(W+WT+2)-th, cz-(D+WT+2)-th, cx-(W+WT+2)+th, cz-(D+WT+2)+th],
+                [cx-(W+WT+2)-th, cz+(D+WT+2)-th, cx-(W+WT+2)+th, cz+(D+WT+2)+th],
+            ];
+        }
+
+        const fireWalls = buildWallList(DRAG_X, DRAG_Z, 16, 14, 1.8, 5.5, 5.5);
+        const iceWalls = buildWallList(GLAC_X, GLAC_Z, 16, 14, 1.8, 5.5, 5.0);
+
+        function resolveWallCollisions(px, pz, walls) {
+            for (let i = 0; i < walls.length; i++) {
+                const w = walls[i];
+                const cx = Math.max(w[0], Math.min(w[2], px));
+                const cz = Math.max(w[1], Math.min(w[3], pz));
+                const dx = px - cx, dz = pz - cz;
+                const distSq = dx * dx + dz * dz;
+                if (distSq < PLAYER_R * PLAYER_R) {
+                    if (distSq > 0.0001) {
+                        const dist = Math.sqrt(distSq);
+                        px = cx + (dx / dist) * PLAYER_R;
+                        pz = cz + (dz / dist) * PLAYER_R;
+                    } else {
+                        px = cx + PLAYER_R;
+                    }
+                }
+            }
+            return [px, pz];
+        }
+
         const fireTempleGroup = (function buildTemple() {
             const g = new THREE.Group();
             const W = 16, D = 14, WH = 9, WT = 1.8, EH = 5.5;
@@ -1457,28 +1500,14 @@
                 ps.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.z));
             }
 
-            // ── Fire temple collision ──
+            // ── Temple wall collision (circle vs AABB per wall segment) ──
             {
-                const tx = ps.pos.x - DRAG_X, tz = ps.pos.z - DRAG_Z;
-                const M = 0.5;
-                if (tx > -16 && tx < 16 && tz > -14 && tz < 14) {
-                    if (tx > 16 - M) ps.pos.x = DRAG_X + 16 - M;
-                    if (tz < -14 + M) ps.pos.z = DRAG_Z - 14 + M;
-                    if (tz > 14 - M) ps.pos.z = DRAG_Z + 14 - M;
-                    if (tx < -16 + M && Math.abs(tz) > 5.5) ps.pos.x = DRAG_X - 16 + M;
-                }
+                let [wx, wz] = resolveWallCollisions(ps.pos.x, ps.pos.z, fireWalls);
+                ps.pos.x = wx; ps.pos.z = wz;
             }
-
-            // ── Ice temple collision (level 2) ──
             if (currentLevel === 2) {
-                const tx2 = ps.pos.x - GLAC_X, tz2 = ps.pos.z - GLAC_Z;
-                const M2 = 0.5, IW = 16, ID = 14;
-                if (tx2 > -IW && tx2 < IW && tz2 > -ID && tz2 < ID) {
-                    if (tx2 > IW - M2) ps.pos.x = GLAC_X + IW - M2;
-                    if (tz2 < -ID + M2) ps.pos.z = GLAC_Z - ID + M2;
-                    if (tz2 > ID - M2) ps.pos.z = GLAC_Z + ID - M2;
-                    if (tx2 < -IW + M2 && Math.abs(tz2) > 5.5) ps.pos.x = GLAC_X - IW + M2;
-                }
+                let [wx, wz] = resolveWallCollisions(ps.pos.x, ps.pos.z, iceWalls);
+                ps.pos.x = wx; ps.pos.z = wz;
             }
 
             // ── Tree collision ──
@@ -2201,6 +2230,7 @@
 
             penguinList.forEach(p => { p.mesh.visible = true; });
             polarBearList.forEach(b => { b.mesh.visible = true; });
+            sheepList.forEach(s => { s.mesh.visible = false; });
 
             const startX = GLAC_X - 28, startZ = GLAC_Z;
             ps.pos.set(startX, getTerrainHeight(startX, startZ), startZ);
