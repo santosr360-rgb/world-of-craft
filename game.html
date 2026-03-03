@@ -494,8 +494,8 @@
             onGround: true,
             walkCycle: 0,
             moving: false,
-            hp: 3,
-            maxHp: 3,
+            hp: 5,
+            maxHp: 5,
             invincible: 0,
             dead: false
         };
@@ -589,6 +589,11 @@
         // ═══════════════════════════════════════════════════════════
         // TREES
         // ═══════════════════════════════════════════════════════════
+        const treePositions = [[-20,16],[12,-24],[-26,-6],[32,-18],[-32,22],[16,32],
+        [-14,-32],[-38,-14],[6,38],[-6,-38],[-42,16],
+        [24,-38],[-24,32],[48,-4],[-48,8],[30,44],[-30,-44],[10,18],[-16,-20]];
+        const TREE_RADIUS = 1.5;
+
         function placeTree(x, z) {
             const y = getTerrainHeight(x, z);
             scene.add(mkBox(0.55, 2.8, 0.55, 0x7a4f1e, x, y+1.4, z));
@@ -596,10 +601,7 @@
             scene.add(mkBox(1.8, 1.8, 1.8, 0x388e3c, x, y+6.2, z));
         }
 
-        [[-20,16],[12,-24],[-26,-6],[32,-18],[-32,22],[16,32],
-        [-14,-32],[-38,-14],[6,38],[-6,-38],[-42,16],
-        [24,-38],[-24,32],[48,-4],[-48,8],[30,44],[-30,-44],[10,18],[-16,-20]]
-            .forEach(([x,z]) => placeTree(x,z));
+        treePositions.forEach(([x,z]) => placeTree(x,z));
 
         // ═══════════════════════════════════════════════════════════
         // CLOUDS
@@ -903,41 +905,62 @@
             .map(([x,z]) => createSheep(x,z));
 
         // ═══════════════════════════════════════════════════════════
-        // KANGAROOS
+        // POLAR BEARS (level 2 — replace kangaroos in ice world)
         // ═══════════════════════════════════════════════════════════
-        function createKangaroo(kx, kz) {
-            const C = 0xb8864e, D = 0x8b6532;
+        function createPolarBear(bx, bz) {
+            const W = 0xf0ece4, L = 0xd8d2c8, N = 0x222222;
             const root = new THREE.Group();
-            root.add(mkBox(0.78, 1.1, 0.6, C, 0, 1.0, 0));
-            root.add(mkBox(0.44, 0.48, 0.5, C, 0, 1.85, -0.3));
-            root.add(mkBox(0.1, 0.42, 0.08, C, -0.18, 2.16, -0.3));
-            root.add(mkBox(0.1, 0.42, 0.08, C, 0.18, 2.16, -0.3));
-            root.add(mkBox(0.22, 0.18, 0.14, D, 0, 1.74, -0.58));
-            root.add(mkBox(0.07, 0.07, 0.04, 0x111111, -0.13, 1.86, -0.58));
-            root.add(mkBox(0.07, 0.07, 0.04, 0x111111, 0.13, 1.86, -0.58));
-            root.add(mkBox(0.22, 0.22, 0.85, D, 0, 0.32, 0.52));
+            // Body
+            root.add(mkBox(1.4, 1.1, 2.0, W, 0, 0.85, 0));
+            // Head
+            root.add(mkBox(0.9, 0.8, 0.9, W, 0, 1.3, -1.2));
+            // Snout
+            root.add(mkBox(0.45, 0.35, 0.5, L, 0, 1.1, -1.7));
+            // Nose
+            root.add(mkBox(0.15, 0.12, 0.08, N, 0, 1.18, -1.96));
+            // Eyes
+            root.add(mkBox(0.1, 0.1, 0.06, N, -0.25, 1.4, -1.62));
+            root.add(mkBox(0.1, 0.1, 0.06, N, 0.25, 1.4, -1.62));
+            // Ears
+            root.add(mkBox(0.2, 0.2, 0.12, L, -0.32, 1.72, -1.1));
+            root.add(mkBox(0.2, 0.2, 0.12, L, 0.32, 1.72, -1.1));
 
-            function mkHLeg(lx) {
+            // Legs
+            function mkBearLeg(lx, lz) {
                 const p = new THREE.Group();
-                p.position.set(lx, 0.52, 0.1);
-                p.add(mkBox(0.25, 0.9, 0.25, D, 0, -0.45, 0));
+                p.position.set(lx, 0.4, lz);
+                p.add(mkBox(0.38, 0.8, 0.38, W, 0, -0.4, 0));
+                p.add(mkBox(0.4, 0.12, 0.44, L, 0, -0.82, 0.02));
                 root.add(p);
                 return p;
             }
-            const hlL = mkHLeg(-0.28), hlR = mkHLeg(0.28);
+            const legFL = mkBearLeg(-0.45, -0.65);
+            const legFR = mkBearLeg(0.45, -0.65);
+            const legBL = mkBearLeg(-0.45, 0.65);
+            const legBR = mkBearLeg(0.45, 0.65);
 
-            root.add(mkBox(0.17, 0.5, 0.17, C, -0.42, 1.38, -0.08));
-            root.add(mkBox(0.17, 0.5, 0.17, C, 0.42, 1.38, -0.08));
+            // Short tail
+            root.add(mkBox(0.2, 0.2, 0.2, W, 0, 1.0, 1.1));
 
-            const ky = getTerrainHeight(kx, kz);
-            root.position.set(kx, ky, kz);
+            const by = getTerrainHeight(bx, bz);
+            root.position.set(bx, by, bz);
+            root.visible = false;
             scene.add(root);
 
-            return { mesh: root, pos: new THREE.Vector3(kx, ky, kz), angle: Math.random()*Math.PI*2, velY: 0, onGround: true, hopTimer: Math.random()*2, walkCycle: 0, hlL, hlR };
+            return {
+                mesh: root,
+                pos: new THREE.Vector3(bx, by, bz),
+                angle: Math.random() * Math.PI * 2,
+                walkCycle: 0,
+                walkTimer: Math.random() * 3,
+                walking: true,
+                speed: 1.5 + Math.random() * 0.6,
+                legFL, legFR, legBL, legBR
+            };
         }
 
-        const kangarooList = [[-30,10],[25,-30],[-15,-40],[40,-25],[-45,20],[15,40],[-35,-20],[30,30]]
-            .map(([x,z]) => createKangaroo(x,z));
+        const polarBearList = [[-30,10],[25,-30],[-15,-40],[40,-25],[-45,20],[15,40],[-35,-20],[30,30]]
+            .map(([x,z]) => createPolarBear(x,z));
 
         // ═══════════════════════════════════════════════════════════
         // PENGUINS (level 2)
@@ -1458,6 +1481,18 @@
                 }
             }
 
+            // ── Tree collision ──
+            for (let ti = 0; ti < treePositions.length; ti++) {
+                const tx = treePositions[ti][0], tz = treePositions[ti][1];
+                const dx = ps.pos.x - tx, dz = ps.pos.z - tz;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                if (dist < TREE_RADIUS) {
+                    const push = TREE_RADIUS / dist;
+                    ps.pos.x = tx + dx * push;
+                    ps.pos.z = tz + dz * push;
+                }
+            }
+
             // ── Jump & gravity ──
             if (!victory.active && (keys['Space'] || keys['KeyE']) && ps.onGround) {
                 ps.velY = JUMP_VEL;
@@ -1642,15 +1677,16 @@
                     }
 
                     if (!swing.hitRegistered) {
-                        for (let ki = kangarooList.length - 1; ki >= 0; ki--) {
-                            const k = kangarooList[ki];
-                            if (ps.pos.distanceTo(k.pos) < 5) {
-                                _toDragon.subVectors(k.pos, ps.pos);
+                        for (let bi = polarBearList.length - 1; bi >= 0; bi--) {
+                            const b = polarBearList[bi];
+                            if (!b.mesh.visible) continue;
+                            if (ps.pos.distanceTo(b.pos) < 5) {
+                                _toDragon.subVectors(b.pos, ps.pos);
                                 _toDragon.y = 0;
                                 _toDragon.normalize();
                                 if (_toDragon.dot(_gFwd) > 0.4) {
-                                    scene.remove(k.mesh);
-                                    kangarooList.splice(ki, 1);
+                                    scene.remove(b.mesh);
+                                    polarBearList.splice(bi, 1);
                                     addScore(1);
                                     swing.hitRegistered = true;
                                     break;
@@ -1739,35 +1775,36 @@
                 s.mesh.rotation.y = s.angle + Math.PI;
             });
 
-            // ── Kangaroo AI ──
-            kangarooList.forEach(k => {
-                k.hopTimer -= dt;
-                if (k.onGround && k.hopTimer <= 0) {
-                    k.angle = Math.random() * Math.PI * 2;
-                    k.velY = 7.5;
-                    k.onGround = false;
-                    k.hopTimer = 1.8 + Math.random() * 2.4;
+            // ── Polar Bear AI ──
+            polarBearList.forEach(b => {
+                if (!b.mesh.visible) return;
+                b.walkTimer -= dt;
+                if (b.walkTimer <= 0) {
+                    b.walking = Math.random() < 0.7;
+                    b.angle = Math.random() * Math.PI * 2;
+                    b.speed = 1.5 + Math.random() * 0.6;
+                    b.walkTimer = b.walking ? (2 + Math.random() * 3) : (1 + Math.random() * 2);
                 }
-                if (!k.onGround) {
-                    k.pos.x -= Math.sin(k.angle) * 3.5 * dt;
-                    k.pos.z -= Math.cos(k.angle) * 3.5 * dt;
-                    k.velY -= 22 * dt;
-                    k.pos.y += k.velY * dt;
+                if (b.walking) {
+                    b.pos.x -= Math.sin(b.angle) * b.speed * dt;
+                    b.pos.z -= Math.cos(b.angle) * b.speed * dt;
+                    b.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, b.pos.x));
+                    b.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, b.pos.z));
+                    b.walkCycle += dt * 4;
+                    const bw = Math.sin(b.walkCycle) * 0.35;
+                    b.legFL.rotation.x = bw;
+                    b.legFR.rotation.x = -bw;
+                    b.legBL.rotation.x = -bw;
+                    b.legBR.rotation.x = bw;
+                } else {
+                    b.legFL.rotation.x = 0;
+                    b.legFR.rotation.x = 0;
+                    b.legBL.rotation.x = 0;
+                    b.legBR.rotation.x = 0;
                 }
-                const groundY = getTerrainHeight(k.pos.x, k.pos.z);
-                if (k.pos.y <= groundY) {
-                    k.pos.y = groundY;
-                    k.velY = 0;
-                    k.onGround = true;
-                }
-                k.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.x));
-                k.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.z));
-
-                const legAngle = k.onGround ? 0 : -0.7 + Math.max(0, k.velY) * 0.05;
-                k.hlL.rotation.x = legAngle;
-                k.hlR.rotation.x = legAngle;
-                k.mesh.position.copy(k.pos);
-                k.mesh.rotation.y = k.angle;
+                b.pos.y = getTerrainHeight(b.pos.x, b.pos.z);
+                b.mesh.position.copy(b.pos);
+                b.mesh.rotation.y = b.angle;
             });
 
             // ── Penguin AI ──
@@ -2163,6 +2200,7 @@
             glacius.alive = true;
 
             penguinList.forEach(p => { p.mesh.visible = true; });
+            polarBearList.forEach(b => { b.mesh.visible = true; });
 
             const startX = GLAC_X - 28, startZ = GLAC_Z;
             ps.pos.set(startX, getTerrainHeight(startX, startZ), startZ);
