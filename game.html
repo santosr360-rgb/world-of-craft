@@ -1891,34 +1891,43 @@
                 s.mesh.rotation.y = s.angle + Math.PI;
             });
 
-            // ── Kangaroo AI ──
+            // ── Kangaroo AI (hopping) ──
             kangarooList.forEach(k => {
                 if (!k.mesh.visible) return;
                 k.walkTimer -= dt;
                 if (k.walkTimer <= 0) {
                     k.walking = Math.random() < 0.7;
                     k.angle = Math.random() * Math.PI * 2;
-                    k.speed = 2.0 + Math.random() * 0.8;
+                    k.speed = 3.0 + Math.random() * 1.0;
                     k.walkTimer = k.walking ? (1.5 + Math.random() * 2.5) : (0.8 + Math.random() * 1.5);
                 }
                 if (k.walking) {
-                    k.pos.x -= Math.sin(k.angle) * k.speed * dt;
-                    k.pos.z -= Math.cos(k.angle) * k.speed * dt;
-                    k.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.x));
-                    k.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.z));
-                    k.walkCycle += dt * 5;
-                    const kw = Math.sin(k.walkCycle) * 0.4;
-                    k.legL.rotation.x = kw;
-                    k.legR.rotation.x = -kw;
-                    k.armL.rotation.x = -kw * 0.3;
-                    k.armR.rotation.x = kw * 0.3;
+                    k.walkCycle += dt * 6;
+                    const hopPhase = Math.sin(k.walkCycle);
+                    const hopHeight = Math.max(0, hopPhase) * 1.2;
+                    const inAir = hopPhase > 0;
+                    // Only move forward during the airborne part of the hop
+                    if (inAir) {
+                        k.pos.x -= Math.sin(k.angle) * k.speed * dt;
+                        k.pos.z -= Math.cos(k.angle) * k.speed * dt;
+                        k.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.x));
+                        k.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.z));
+                    }
+                    // Both legs kick back together on launch, tuck forward on land
+                    const legAngle = inAir ? -0.5 : 0.35;
+                    k.legL.rotation.x = legAngle;
+                    k.legR.rotation.x = legAngle;
+                    // Arms tuck in while airborne
+                    k.armL.rotation.x = inAir ? 0.3 : -0.15;
+                    k.armR.rotation.x = inAir ? 0.3 : -0.15;
+                    k.pos.y = getTerrainHeight(k.pos.x, k.pos.z) + hopHeight;
                 } else {
                     k.legL.rotation.x = 0;
                     k.legR.rotation.x = 0;
                     k.armL.rotation.x = 0;
                     k.armR.rotation.x = 0;
+                    k.pos.y = getTerrainHeight(k.pos.x, k.pos.z);
                 }
-                k.pos.y = getTerrainHeight(k.pos.x, k.pos.z);
                 k.mesh.position.copy(k.pos);
                 k.mesh.rotation.y = k.angle;
             });
