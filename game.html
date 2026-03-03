@@ -1902,8 +1902,8 @@
                     k.walkTimer = k.walking ? (1.5 + Math.random() * 2.5) : (0.8 + Math.random() * 1.5);
                 }
                 if (k.walking) {
-                    k.pos.x += Math.sin(k.angle) * k.speed * dt;
-                    k.pos.z += Math.cos(k.angle) * k.speed * dt;
+                    k.pos.x -= Math.sin(k.angle) * k.speed * dt;
+                    k.pos.z -= Math.cos(k.angle) * k.speed * dt;
                     k.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.x));
                     k.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, k.pos.z));
                     k.walkCycle += dt * 5;
@@ -1920,7 +1920,7 @@
                 }
                 k.pos.y = getTerrainHeight(k.pos.x, k.pos.z);
                 k.mesh.position.copy(k.pos);
-                k.mesh.rotation.y = k.angle + Math.PI;
+                k.mesh.rotation.y = k.angle;
             });
 
             // ── Polar Bear AI ──
