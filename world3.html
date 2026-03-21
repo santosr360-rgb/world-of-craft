@@ -139,7 +139,7 @@
     /* Shadow vignette */
     #vignette {
       position: fixed; inset: 0; pointer-events: none; z-index: 150;
-      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
     }
   </style>
 </head>
@@ -180,9 +180,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const SKY = 0x06000e;
+const SKY = 0x100820;
 scene.background = new THREE.Color(SKY);
-scene.fog = new THREE.FogExp2(0x08000f, 0.014);
+scene.fog = new THREE.FogExp2(0x120a22, 0.009);
 
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 500);
 window.addEventListener('resize', () => {
@@ -194,10 +194,10 @@ window.addEventListener('resize', () => {
 // ═══════════════════════════════════════════════════════════
 //  LIGHTING — dark cavern with purple glow
 // ═══════════════════════════════════════════════════════════
-scene.add(new THREE.AmbientLight(0x1a0033, 0.35));
+scene.add(new THREE.AmbientLight(0x331166, 0.7));
 
-// Dim overhead light (like cracks in the cavern ceiling)
-const caveLight = new THREE.DirectionalLight(0x6633aa, 0.6);
+// Overhead light (cracks in the cavern ceiling)
+const caveLight = new THREE.DirectionalLight(0x8855cc, 1.0);
 caveLight.position.set(30, 80, 20);
 caveLight.castShadow = true;
 Object.assign(caveLight.shadow.camera, { left:-130, right:130, top:130, bottom:-130, far:350 });
@@ -205,17 +205,21 @@ caveLight.shadow.mapSize.set(2048, 2048);
 scene.add(caveLight);
 
 // Purple point lights for atmosphere
-const purpleLight1 = new THREE.PointLight(0x9900ff, 1.5, 60);
-purpleLight1.position.set(0, 8, 0);
+const purpleLight1 = new THREE.PointLight(0xaa33ff, 2.5, 80);
+purpleLight1.position.set(0, 10, 0);
 scene.add(purpleLight1);
 
-const purpleLight2 = new THREE.PointLight(0x6600cc, 1.2, 50);
-purpleLight2.position.set(36, 6, 18);
+const purpleLight2 = new THREE.PointLight(0x8833dd, 2.0, 70);
+purpleLight2.position.set(36, 8, 18);
 scene.add(purpleLight2);
 
-const purpleLight3 = new THREE.PointLight(0x7700dd, 0.8, 40);
-purpleLight3.position.set(-30, 5, -20);
+const purpleLight3 = new THREE.PointLight(0x9944ee, 1.5, 60);
+purpleLight3.position.set(-30, 7, -20);
 scene.add(purpleLight3);
+
+const purpleLight4 = new THREE.PointLight(0x7733cc, 1.5, 60);
+purpleLight4.position.set(-10, 8, 30);
+scene.add(purpleLight4);
 
 // ═══════════════════════════════════════════════════════════
 //  TERRAIN — dark stone cavern floor
@@ -241,7 +245,7 @@ for (let i = 0; i < tPos.count; i++) {
   tPos.setY(i, getTerrainHeight(tPos.getX(i), tPos.getZ(i)));
 }
 tGeo.computeVertexNormals();
-const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x1a1428 }));
+const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x2a2040 }));
 terrain.receiveShadow = true;
 scene.add(terrain);
 
