@@ -342,14 +342,11 @@ function placePillar(x, z) {
   scene.add(mkGlowBox(1.8, h, 1.8, 0x2a1840, 0x1a0830, x, y + h/2, z));
   scene.add(mkGlowBox(2.4, 0.6, 2.4, 0x3a2450, 0x1a0830, x, y + h, z));
   scene.add(mkGlowBox(2.4, 0.6, 2.4, 0x3a2450, 0x1a0830, x, y + 0.3, z));
-  // Purple crystal on top — always, with a light
+  // Purple crystal on top
   const crystal = mkGlowBox(0.5, 1.2, 0.5, 0xbb44ff, 0x9922dd, x, y + h + 0.9, z);
   crystal.rotation.y = Math.random() * Math.PI;
   crystal.rotation.z = 0.15;
   scene.add(crystal);
-  const pl = new THREE.PointLight(0x9933ff, 1.0, 20);
-  pl.position.set(x, y + h + 1.5, z);
-  scene.add(pl);
 }
 
 [[-20,16],[18,-22],[-28,-8],[30,10],[-14,30],[22,28],
@@ -369,10 +366,6 @@ function placeCrystal(x, z, color, emissive) {
   crystal.rotation.z = (Math.random() - 0.5) * 0.3;
   scene.add(crystal);
   crystals.push(crystal);
-  // All crystals emit light
-  const cl = new THREE.PointLight(emissive, 0.8, 18);
-  cl.position.set(x, y + h, z);
-  scene.add(cl);
 }
 
 [[5,8],[-12,5],[8,-14],[-6,-18],[15,14],[-18,10],[22,-8],
@@ -528,10 +521,6 @@ groundBow.add(mkGlowBox(0.02, 1.5, 0.02, 0x88ccff, 0x44aadd, 0.02, 0, 0));
 const bowGlow = mkGlowBox(0.5, 0.5, 0.5, 0x00aaff, 0x0077cc, 0, 0, 0);
 bowGlow.material.transparent = true; bowGlow.material.opacity = 0.2;
 groundBow.add(bowGlow);
-// Light
-const bowLight = new THREE.PointLight(0x00aaff, 1.5, 12);
-bowLight.position.set(0, 0.5, 0);
-groundBow.add(bowLight);
 
 groundBow.position.copy(BOW_POS);
 groundBow.rotation.z = Math.PI / 4;
@@ -633,10 +622,6 @@ function createTurtle(tx, tz) {
   root.add(mkGlowBox(0.14, 0.15, 0.14, 0x55bb77, 0x33aa55, 0.3, 0.1, -0.3));
   root.add(mkGlowBox(0.14, 0.15, 0.14, 0x55bb77, 0x33aa55, -0.3, 0.1, 0.3));
   root.add(mkGlowBox(0.14, 0.15, 0.14, 0x55bb77, 0x33aa55, 0.3, 0.1, 0.3));
-  // Glow light under turtle
-  const gl = new THREE.PointLight(0x33cc66, 0.6, 8);
-  gl.position.set(0, 0.5, 0);
-  root.add(gl);
 
   const ty = getTerrainHeight(tx, tz);
   root.position.set(tx, ty, tz);
@@ -724,10 +709,6 @@ function buildDragon() {
   root.add(mkGlowBox(0.7, 0.6, 2.4, 0x1e0c30, 0x140820, 0, 0.3, 7.8));
   root.add(mkGlowBox(0.4, 0.4, 2.0, 0x180828, 0x100618, 0, 0.2, 10.0));
   root.add(mkGlowBox(0.25, 0.25, 0.8, 0x9933ff, 0x6600cc, 0, 0.15, 11.5));
-  // Tail tip light
-  const tailGlow = new THREE.PointLight(0x7722cc, 1.5, 15);
-  tailGlow.position.set(0, 0.5, 11.5);
-  root.add(tailGlow);
 
   // ── Wings (tattered, shadow-membrane — glowing veins) ──
   const wingLP = new THREE.Group(); wingLP.position.set(-1.6, 2.0, 0.5);
