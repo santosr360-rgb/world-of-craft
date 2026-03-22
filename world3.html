@@ -46,23 +46,13 @@
       transition: width 0.25s ease;
     }
 
-    /* Player HP */
-    #player-hud {
-      position: fixed; bottom: 20px; right: 20px;
-      text-align: right; pointer-events: none; z-index: 200;
-    }
-    #player-label {
-      font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 2px;
-      color: #66cc66; margin-bottom: 3px;
-    }
-    #player-hp-bar {
-      width: 160px; height: 10px;
-      background: #0a180a; border: 1px solid #336633; border-radius: 2px;
-    }
-    #player-hp-fill {
-      height: 100%; width: 100%;
-      background: linear-gradient(90deg, #44aa44, #66ff66);
-      transition: width 0.25s ease;
+    /* Player HP Hearts */
+    #player-hp {
+      position: fixed; bottom: 22px; right: 20px;
+      font-size: 1.6rem; letter-spacing: 4px;
+      color: #ff3366;
+      text-shadow: 0 0 12px #ff3366, 0 0 24px #cc0044, 0 0 40px #ff0066;
+      pointer-events: none; z-index: 200;
     }
 
     /* Sword HUD */
@@ -153,10 +143,7 @@
     <div id="hp-bar"><div id="hp-fill"></div></div>
   </div>
 
-  <div id="player-hud">
-    <div id="player-label">GEORGE HP</div>
-    <div id="player-hp-bar"><div id="player-hp-fill"></div></div>
-  </div>
+  <div id="player-hp">♥ ♥ ♥ ♥ ♥</div>
 
   <div id="sword-hud">⚔ SHADOW BLADE EQUIPPED</div>
   <div id="pickup-hint">⚔ Walk closer to pick up the Shadow Blade!</div>
@@ -636,8 +623,11 @@ function updateHpBar() {
   document.getElementById('hp-fill').style.width = (dragon.hp / dragon.maxHp * 100) + '%';
 }
 
+const playerHpEl = document.getElementById('player-hp');
 function updatePlayerHpBar() {
-  document.getElementById('player-hp-fill').style.width = (ps.hp / ps.maxHp * 100) + '%';
+  let s = '';
+  for (let i = 0; i < ps.maxHp; i++) s += (i < ps.hp ? '♥' : '♡') + ' ';
+  playerHpEl.textContent = s;
 }
 
 // ═══════════════════════════════════════════════════════════

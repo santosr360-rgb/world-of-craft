@@ -2379,6 +2379,11 @@
             checkpointSavedForGlacius = false;
         }
 
+        // Jump to level 2 if ?level=2 in URL
+        if (new URLSearchParams(window.location.search).get('level') === '2') {
+            startLevel2();
+        }
+
         animate();
     </script>
 </body>
