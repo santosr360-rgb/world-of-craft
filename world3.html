@@ -180,9 +180,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const SKY = 0x100820;
+const SKY = 0x1a1030;
 scene.background = new THREE.Color(SKY);
-scene.fog = new THREE.FogExp2(0x120a22, 0.009);
+scene.fog = new THREE.FogExp2(0x1a1030, 0.006);
 
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 500);
 window.addEventListener('resize', () => {
@@ -194,10 +194,10 @@ window.addEventListener('resize', () => {
 // ═══════════════════════════════════════════════════════════
 //  LIGHTING — dark cavern with purple glow
 // ═══════════════════════════════════════════════════════════
-scene.add(new THREE.AmbientLight(0x331166, 0.7));
+scene.add(new THREE.AmbientLight(0x6644aa, 1.2));
 
 // Overhead light (cracks in the cavern ceiling)
-const caveLight = new THREE.DirectionalLight(0x8855cc, 1.0);
+const caveLight = new THREE.DirectionalLight(0xaa77ee, 1.4);
 caveLight.position.set(30, 80, 20);
 caveLight.castShadow = true;
 Object.assign(caveLight.shadow.camera, { left:-130, right:130, top:130, bottom:-130, far:350 });
@@ -205,21 +205,29 @@ caveLight.shadow.mapSize.set(2048, 2048);
 scene.add(caveLight);
 
 // Purple point lights for atmosphere
-const purpleLight1 = new THREE.PointLight(0xaa33ff, 2.5, 80);
-purpleLight1.position.set(0, 10, 0);
+const purpleLight1 = new THREE.PointLight(0xbb55ff, 3.0, 100);
+purpleLight1.position.set(0, 12, 0);
 scene.add(purpleLight1);
 
-const purpleLight2 = new THREE.PointLight(0x8833dd, 2.0, 70);
-purpleLight2.position.set(36, 8, 18);
+const purpleLight2 = new THREE.PointLight(0x9944ee, 2.5, 90);
+purpleLight2.position.set(36, 10, 18);
 scene.add(purpleLight2);
 
-const purpleLight3 = new THREE.PointLight(0x9944ee, 1.5, 60);
-purpleLight3.position.set(-30, 7, -20);
+const purpleLight3 = new THREE.PointLight(0xaa55ff, 2.5, 80);
+purpleLight3.position.set(-30, 9, -20);
 scene.add(purpleLight3);
 
-const purpleLight4 = new THREE.PointLight(0x7733cc, 1.5, 60);
-purpleLight4.position.set(-10, 8, 30);
+const purpleLight4 = new THREE.PointLight(0x9944dd, 2.0, 80);
+purpleLight4.position.set(-10, 10, 30);
 scene.add(purpleLight4);
+
+const purpleLight5 = new THREE.PointLight(0x8844cc, 2.0, 80);
+purpleLight5.position.set(20, 10, -30);
+scene.add(purpleLight5);
+
+const purpleLight6 = new THREE.PointLight(0xaa55ff, 2.0, 80);
+purpleLight6.position.set(-40, 10, 10);
+scene.add(purpleLight6);
 
 // ═══════════════════════════════════════════════════════════
 //  TERRAIN — dark stone cavern floor
@@ -245,7 +253,7 @@ for (let i = 0; i < tPos.count; i++) {
   tPos.setY(i, getTerrainHeight(tPos.getX(i), tPos.getZ(i)));
 }
 tGeo.computeVertexNormals();
-const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x2a2040 }));
+const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x3a3058, emissive: 0x110822, emissiveIntensity: 0.3 }));
 terrain.receiveShadow = true;
 scene.add(terrain);
 
@@ -255,7 +263,7 @@ scene.add(terrain);
 function mkBox(w, h, d, color, px, py, pz) {
   const m = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshLambertMaterial({ color })
+    new THREE.MeshLambertMaterial({ color, emissive: 0x220044, emissiveIntensity: 0.25 })
   );
   if (px !== undefined) m.position.set(px, py, pz);
   m.castShadow = true; m.receiveShadow = true;
@@ -265,7 +273,7 @@ function mkBox(w, h, d, color, px, py, pz) {
 function mkGlowBox(w, h, d, color, emissive, px, py, pz) {
   const m = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshLambertMaterial({ color, emissive, emissiveIntensity: 0.6 })
+    new THREE.MeshLambertMaterial({ color, emissive, emissiveIntensity: 0.9 })
   );
   if (px !== undefined) m.position.set(px, py, pz);
   m.castShadow = true; m.receiveShadow = true;
@@ -314,6 +322,11 @@ armLP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0)); georgeRoot.add(armLP);
 const armRP = new THREE.Group(); armRP.position.set(0.51, 1.73, 0);
 armRP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0)); georgeRoot.add(armRP);
 
+// Player glow light (follows George)
+const playerGlow = new THREE.PointLight(0x8855cc, 2.0, 25);
+playerGlow.position.set(0, 3, 0);
+georgeRoot.add(playerGlow);
+
 // ── Player state ──
 const BOUNDARY = 100;
 const ps = {
@@ -329,16 +342,17 @@ const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
 function placePillar(x, z) {
   const y = getTerrainHeight(x, z);
   const h = 8 + Math.random() * 6;
-  scene.add(mkBox(1.8, h, 1.8, 0x161024, x, y + h/2, z));
-  scene.add(mkBox(2.4, 0.6, 2.4, 0x1e1430, x, y + h, z));
-  scene.add(mkBox(2.4, 0.6, 2.4, 0x1e1430, x, y + 0.3, z));
-  // Purple crystal on top of some pillars
-  if (Math.random() > 0.5) {
-    const crystal = mkGlowBox(0.5, 1.2, 0.5, 0x9900ff, 0x6600aa, x, y + h + 0.9, z);
-    crystal.rotation.y = Math.random() * Math.PI;
-    crystal.rotation.z = 0.15;
-    scene.add(crystal);
-  }
+  scene.add(mkGlowBox(1.8, h, 1.8, 0x2a1840, 0x1a0830, x, y + h/2, z));
+  scene.add(mkGlowBox(2.4, 0.6, 2.4, 0x3a2450, 0x1a0830, x, y + h, z));
+  scene.add(mkGlowBox(2.4, 0.6, 2.4, 0x3a2450, 0x1a0830, x, y + 0.3, z));
+  // Purple crystal on top — always, with a light
+  const crystal = mkGlowBox(0.5, 1.2, 0.5, 0xbb44ff, 0x9922dd, x, y + h + 0.9, z);
+  crystal.rotation.y = Math.random() * Math.PI;
+  crystal.rotation.z = 0.15;
+  scene.add(crystal);
+  const pl = new THREE.PointLight(0x9933ff, 1.0, 20);
+  pl.position.set(x, y + h + 1.5, z);
+  scene.add(pl);
 }
 
 [[-20,16],[18,-22],[-28,-8],[30,10],[-14,30],[22,28],
@@ -358,12 +372,10 @@ function placeCrystal(x, z, color, emissive) {
   crystal.rotation.z = (Math.random() - 0.5) * 0.3;
   scene.add(crystal);
   crystals.push(crystal);
-  // Add point light for larger crystals
-  if (h > 1.5) {
-    const cl = new THREE.PointLight(emissive, 0.5, 12);
-    cl.position.set(x, y + h, z);
-    scene.add(cl);
-  }
+  // All crystals emit light
+  const cl = new THREE.PointLight(emissive, 0.8, 18);
+  cl.position.set(x, y + h, z);
+  scene.add(cl);
 }
 
 [[5,8],[-12,5],[8,-14],[-6,-18],[15,14],[-18,10],[22,-8],
@@ -389,7 +401,7 @@ for (let i = 0; i < 30; i++) {
   const s = 0.15 + Math.random() * 0.25;
   const wisp = new THREE.Mesh(
     new THREE.BoxGeometry(s, s, s),
-    new THREE.MeshLambertMaterial({ color: 0x6600aa, emissive: 0x330066, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 })
+    new THREE.MeshLambertMaterial({ color: 0xaa44ff, emissive: 0x7722cc, emissiveIntensity: 1.2, transparent: true, opacity: 0.7 })
   );
   const wx = (Math.random() - 0.5) * 160;
   const wz = (Math.random() - 0.5) * 160;
@@ -412,14 +424,14 @@ for (let i = 0; i < 30; i++) {
 const CEILING_Y = 28;
 function placeStalactite(x, z) {
   const h = 3 + Math.random() * 5;
-  scene.add(mkBox(0.8, h, 0.8, 0x12101e, x, CEILING_Y - h/2, z));
-  scene.add(mkBox(0.4, 1.5, 0.4, 0x0e0c18, x, CEILING_Y - h - 0.7, z));
+  scene.add(mkGlowBox(0.8, h, 0.8, 0x2a2040, 0x1a0830, x, CEILING_Y - h/2, z));
+  scene.add(mkGlowBox(0.4, 1.5, 0.4, 0x3a2850, 0x220a3a, x, CEILING_Y - h - 0.7, z));
 }
 
 // Cavern ceiling
 const ceilGeo = new THREE.PlaneGeometry(240, 240);
 ceilGeo.rotateX(Math.PI / 2);
-const ceiling = new THREE.Mesh(ceilGeo, new THREE.MeshLambertMaterial({ color: 0x0a0814, side: THREE.DoubleSide }));
+const ceiling = new THREE.Mesh(ceilGeo, new THREE.MeshLambertMaterial({ color: 0x1a1428, emissive: 0x0a0414, emissiveIntensity: 0.3, side: THREE.DoubleSide }));
 ceiling.position.y = CEILING_Y;
 scene.add(ceiling);
 
@@ -435,13 +447,13 @@ const bats = [];
 function createBat(bx, bz) {
   const root = new THREE.Group();
   // Body
-  root.add(mkBox(0.3, 0.25, 0.4, 0x1a1028, 0, 0, 0));
+  root.add(mkGlowBox(0.3, 0.25, 0.4, 0x3a2050, 0x220044, 0, 0, 0));
   // Wings
   const wingL = new THREE.Group(); wingL.position.set(-0.15, 0.05, 0);
-  wingL.add(mkBox(0.6, 0.06, 0.35, 0x220033, -0.3, 0, 0));
+  wingL.add(mkGlowBox(0.6, 0.06, 0.35, 0x441166, 0x330055, -0.3, 0, 0));
   root.add(wingL);
   const wingR = new THREE.Group(); wingR.position.set(0.15, 0.05, 0);
-  wingR.add(mkBox(0.6, 0.06, 0.35, 0x220033, 0.3, 0, 0));
+  wingR.add(mkGlowBox(0.6, 0.06, 0.35, 0x441166, 0x330055, 0.3, 0, 0));
   root.add(wingR);
   // Eyes
   root.add(mkGlowBox(0.06, 0.06, 0.04, 0xff0044, 0xff0044, -0.08, 0.06, -0.2));
@@ -506,74 +518,81 @@ const DRAG_BASE_Y = getTerrainHeight(DRAG_X, DRAG_Z) + 5;
 function buildDragon() {
   const root = new THREE.Group();
 
-  // ── Body (dark shadow — near-black purple) ──
-  root.add(mkBox(3.2, 2.0, 5.0, 0x180828, 0, 1.0, 0));
-  root.add(mkBox(3.5, 0.4, 5.2, 0x220044, 0, 0.05, 0)); // underbelly — faint purple
+  // ── Body (glowing dark purple) ──
+  root.add(mkGlowBox(3.2, 2.0, 5.0, 0x2a1040, 0x1a0830, 0, 1.0, 0));
+  root.add(mkGlowBox(3.5, 0.4, 5.2, 0x3a1860, 0x220044, 0, 0.05, 0)); // underbelly
 
   // ── Neck (elongated, serpentine) ──
-  root.add(mkBox(1.2, 1.8, 1.4, 0x180828, 0, 2.5, -2.6));
-  root.add(mkBox(1.0, 1.4, 1.0, 0x160622, 0, 3.6, -3.4));
+  root.add(mkGlowBox(1.2, 1.8, 1.4, 0x2a1040, 0x1a0830, 0, 2.5, -2.6));
+  root.add(mkGlowBox(1.0, 1.4, 1.0, 0x281038, 0x180828, 0, 3.6, -3.4));
 
   // ── Head (angular, menacing) ──
-  root.add(mkBox(2.0, 1.5, 2.6, 0x1e0a30, 0, 4.2, -4.6));
+  root.add(mkGlowBox(2.0, 1.5, 2.6, 0x321248, 0x1e0a30, 0, 4.2, -4.6));
   // Snout (sharp)
-  root.add(mkBox(1.1, 0.6, 1.8, 0x200c34, 0, 3.8, -6.0));
+  root.add(mkGlowBox(1.1, 0.6, 1.8, 0x381450, 0x200c34, 0, 3.8, -6.0));
   // Jaw glow
-  root.add(mkGlowBox(0.9, 0.15, 1.4, 0x6600aa, 0x4400cc, 0, 3.55, -5.8));
+  root.add(mkGlowBox(0.9, 0.15, 1.4, 0x9933ff, 0x6600cc, 0, 3.55, -5.8));
 
-  // Horns (curved shadow horns — taller)
-  root.add(mkBox(0.22, 1.8, 0.22, 0x220044, -0.6, 5.6, -4.4));
-  root.add(mkBox(0.18, 0.8, 0.22, 0x220044, -0.65, 6.5, -4.8));
-  root.add(mkBox(0.22, 1.8, 0.22, 0x220044, 0.6, 5.6, -4.4));
-  root.add(mkBox(0.18, 0.8, 0.22, 0x220044, 0.65, 6.5, -4.8));
+  // Horns (curved shadow horns — glowing)
+  root.add(mkGlowBox(0.22, 1.8, 0.22, 0x4a1878, 0x330066, -0.6, 5.6, -4.4));
+  root.add(mkGlowBox(0.18, 0.8, 0.22, 0x4a1878, 0x330066, -0.65, 6.5, -4.8));
+  root.add(mkGlowBox(0.22, 1.8, 0.22, 0x4a1878, 0x330066, 0.6, 5.6, -4.4));
+  root.add(mkGlowBox(0.18, 0.8, 0.22, 0x4a1878, 0x330066, 0.65, 6.5, -4.8));
+
+  // Dragon body glow light
+  const dragonGlow = new THREE.PointLight(0x9933ff, 3.0, 30);
+  dragonGlow.position.set(0, 3, -2);
+  root.add(dragonGlow);
 
   // Eyes (piercing violet glow)
-  const eyeMatL = new THREE.MeshLambertMaterial({ color: 0xcc44ff, emissive: 0x9900ff, emissiveIntensity: 1.2 });
+  const eyeMatL = new THREE.MeshLambertMaterial({ color: 0xee66ff, emissive: 0xcc33ff, emissiveIntensity: 2.0 });
   const eyeMatR = eyeMatL.clone();
   const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.18), eyeMatL);
   eyeL.position.set(-0.55, 4.3, -5.9); eyeL.castShadow = true; root.add(eyeL);
   const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.18), eyeMatR);
   eyeR.position.set(0.55, 4.3, -5.9); eyeR.castShadow = true; root.add(eyeR);
 
-  // ── Tail (long, whip-like with shadow wisps) ──
-  root.add(mkBox(1.8, 1.4, 2.2, 0x180828, 0, 0.8, 2.8));
-  root.add(mkBox(1.2, 1.0, 2.6, 0x140620, 0, 0.5, 5.2));
-  root.add(mkBox(0.7, 0.6, 2.4, 0x100518, 0, 0.3, 7.8));
-  root.add(mkBox(0.4, 0.4, 2.0, 0x0c0412, 0, 0.2, 10.0));
-  root.add(mkGlowBox(0.25, 0.25, 0.8, 0x6600aa, 0x4400cc, 0, 0.15, 11.5)); // glowing tip
+  // ── Tail (long, whip-like — glowing) ──
+  root.add(mkGlowBox(1.8, 1.4, 2.2, 0x2a1040, 0x1a0830, 0, 0.8, 2.8));
+  root.add(mkGlowBox(1.2, 1.0, 2.6, 0x241038, 0x180828, 0, 0.5, 5.2));
+  root.add(mkGlowBox(0.7, 0.6, 2.4, 0x1e0c30, 0x140820, 0, 0.3, 7.8));
+  root.add(mkGlowBox(0.4, 0.4, 2.0, 0x180828, 0x100618, 0, 0.2, 10.0));
+  root.add(mkGlowBox(0.25, 0.25, 0.8, 0x9933ff, 0x6600cc, 0, 0.15, 11.5));
+  // Tail tip light
+  const tailGlow = new THREE.PointLight(0x7722cc, 1.5, 15);
+  tailGlow.position.set(0, 0.5, 11.5);
+  root.add(tailGlow);
 
-  // ── Wings (tattered, shadow-membrane) ──
+  // ── Wings (tattered, shadow-membrane — glowing veins) ──
   const wingLP = new THREE.Group(); wingLP.position.set(-1.6, 2.0, 0.5);
-  wingLP.add(mkBox(3.8, 0.12, 2.8, 0x120420, -1.9, 0, 0));
-  wingLP.add(mkBox(2.8, 0.1, 2.4, 0x0e0318, -5.3, 0.1, 0.3));
-  wingLP.add(mkBox(1.4, 0.08, 1.6, 0x0a0210, -7.5, 0.2, 0.5));
-  // Wing bone highlights
-  wingLP.add(mkGlowBox(0.12, 0.14, 2.6, 0x440088, 0x330066, -1.0, 0.1, 0));
-  wingLP.add(mkGlowBox(0.1, 0.12, 2.2, 0x440088, 0x330066, -3.5, 0.12, 0.2));
+  wingLP.add(mkGlowBox(3.8, 0.12, 2.8, 0x241038, 0x1a0830, -1.9, 0, 0));
+  wingLP.add(mkGlowBox(2.8, 0.1, 2.4, 0x1e0c30, 0x140820, -5.3, 0.1, 0.3));
+  wingLP.add(mkGlowBox(1.4, 0.08, 1.6, 0x180a28, 0x100618, -7.5, 0.2, 0.5));
+  wingLP.add(mkGlowBox(0.12, 0.14, 2.6, 0x7733bb, 0x5522aa, -1.0, 0.1, 0));
+  wingLP.add(mkGlowBox(0.1, 0.12, 2.2, 0x7733bb, 0x5522aa, -3.5, 0.12, 0.2));
   root.add(wingLP);
 
   const wingRP = new THREE.Group(); wingRP.position.set(1.6, 2.0, 0.5);
-  wingRP.add(mkBox(3.8, 0.12, 2.8, 0x120420, 1.9, 0, 0));
-  wingRP.add(mkBox(2.8, 0.1, 2.4, 0x0e0318, 5.3, 0.1, 0.3));
-  wingRP.add(mkBox(1.4, 0.08, 1.6, 0x0a0210, 7.5, 0.2, 0.5));
-  wingRP.add(mkGlowBox(0.12, 0.14, 2.6, 0x440088, 0x330066, 1.0, 0.1, 0));
-  wingRP.add(mkGlowBox(0.1, 0.12, 2.2, 0x440088, 0x330066, 3.5, 0.12, 0.2));
+  wingRP.add(mkGlowBox(3.8, 0.12, 2.8, 0x241038, 0x1a0830, 1.9, 0, 0));
+  wingRP.add(mkGlowBox(2.8, 0.1, 2.4, 0x1e0c30, 0x140820, 5.3, 0.1, 0.3));
+  wingRP.add(mkGlowBox(1.4, 0.08, 1.6, 0x180a28, 0x100618, 7.5, 0.2, 0.5));
+  wingRP.add(mkGlowBox(0.12, 0.14, 2.6, 0x7733bb, 0x5522aa, 1.0, 0.1, 0));
+  wingRP.add(mkGlowBox(0.1, 0.12, 2.2, 0x7733bb, 0x5522aa, 3.5, 0.12, 0.2));
   root.add(wingRP);
 
-  // ── Legs (4 shadow-clawed legs) ──
+  // ── Legs (4 shadow-clawed legs — glowing) ──
   function mkLeg(lx, lz) {
-    root.add(mkBox(0.6, 1.2, 0.6, 0x140620, lx, 0.25, lz));
-    root.add(mkBox(0.45, 1.2, 0.45, 0x100518, lx*0.8, -1.05, lz+lx*0.05));
-    root.add(mkBox(0.6, 0.2, 0.9, 0x0c0412, lx*0.8, -1.7, lz-0.3));
-    // Claws glow
-    root.add(mkGlowBox(0.15, 0.1, 0.3, 0x6600aa, 0x4400cc, lx*0.8-0.15, -1.8, lz-0.7));
-    root.add(mkGlowBox(0.15, 0.1, 0.3, 0x6600aa, 0x4400cc, lx*0.8+0.15, -1.8, lz-0.7));
+    root.add(mkGlowBox(0.6, 1.2, 0.6, 0x241038, 0x180828, lx, 0.25, lz));
+    root.add(mkGlowBox(0.45, 1.2, 0.45, 0x1e0c30, 0x140820, lx*0.8, -1.05, lz+lx*0.05));
+    root.add(mkGlowBox(0.6, 0.2, 0.9, 0x180a28, 0x100618, lx*0.8, -1.7, lz-0.3));
+    root.add(mkGlowBox(0.15, 0.1, 0.3, 0x9933ff, 0x6600cc, lx*0.8-0.15, -1.8, lz-0.7));
+    root.add(mkGlowBox(0.15, 0.1, 0.3, 0x9933ff, 0x6600cc, lx*0.8+0.15, -1.8, lz-0.7));
   }
   mkLeg(-1.5, -2.0); mkLeg(1.5, -2.0);
   mkLeg(-1.5, 2.0);  mkLeg(1.5, 2.0);
 
   // Shadow aura (semi-transparent dark sphere)
-  const auraMat = new THREE.MeshLambertMaterial({ color: 0x220044, emissive: 0x110022, transparent: true, opacity: 0.15 });
+  const auraMat = new THREE.MeshLambertMaterial({ color: 0x4400aa, emissive: 0x330088, emissiveIntensity: 0.5, transparent: true, opacity: 0.2 });
   const aura = new THREE.Mesh(new THREE.BoxGeometry(12, 8, 14), auraMat);
   aura.position.set(0, 2, 1);
   root.add(aura);
