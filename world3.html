@@ -682,7 +682,7 @@ const dragon = {
   wingRP:    dragonParts.wingRP,
   aura:      dragonParts.aura,
   pos:       new THREE.Vector3(DRAG_X, DRAG_BASE_Y, DRAG_Z),
-  angle:     0,
+  angle:     Math.atan2(0 - DRAG_X, 0 - DRAG_Z) + Math.PI,
   hp:        7,
   maxHp:     7,
   alive:     true,
@@ -1134,8 +1134,8 @@ function animate() {
     dragon.aura.material.opacity = 0.1 + Math.sin(t * 2) * 0.08;
     dragon.aura.scale.setScalar(1 + Math.sin(t * 1.5) * 0.05);
 
-    // Always face George
-    const wantAngle = Math.atan2(dxd, dzd);
+    // Always face George (head is at -Z, so add PI)
+    const wantAngle = Math.atan2(dxd, dzd) + Math.PI;
     let diff = wantAngle - dragon.angle;
     while (diff >  Math.PI) diff -= 2*Math.PI;
     while (diff < -Math.PI) diff += 2*Math.PI;

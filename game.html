@@ -503,6 +503,7 @@
         const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
         const victory = { active: false, timer: 0 };
         let level2StartedFlag = false;
+        let level3StartedFlag = false;
 
         // ═══════════════════════════════════════════════════════════
         // CHECKPOINT SYSTEM
@@ -1680,6 +1681,16 @@
                     if (victory.timer >= 7.0 && !level2StartedFlag) {
                         level2StartedFlag = true;
                         startLevel2();
+                    }
+                }
+                if (currentLevel === 2) {
+                    if (victory.timer > 4.5 && victory.timer < 7.0) {
+                        document.getElementById('level-transition').style.display = 'block';
+                        document.getElementById('level-transition').innerHTML = 'THE ICE MELTS INTO SHADOW...' + '<span class="sub">👁 A DARKER EVIL STIRS 👁</span>';
+                    }
+                    if (victory.timer >= 7.0 && !level3StartedFlag) {
+                        level3StartedFlag = true;
+                        window.location.href = 'world3.html';
                     }
                 }
             } else if (inTemple || inIceTemple) {
