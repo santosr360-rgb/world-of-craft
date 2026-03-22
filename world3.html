@@ -562,13 +562,18 @@ function createTurtle(tx, tz) {
 
 // Kill effects
 const killParticles = [];
+// Pre-create shared geometry for kill particles
+const _killGeo = new THREE.BoxGeometry(1, 1, 1);
 function spawnKillEffect(pos, colors) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 4; i++) {
     const s = 0.15 + Math.random() * 0.25;
-    const p = mkGlowBox(s, s, s, colors[Math.floor(Math.random()*colors.length)], colors[0]);
+    const mat = new THREE.MeshLambertMaterial({ color: colors[Math.floor(Math.random()*colors.length)], emissive: colors[0], emissiveIntensity: 0.9 });
+    const p = new THREE.Mesh(_killGeo, mat);
+    p.scale.setScalar(s);
     p.position.copy(pos);
+    p.castShadow = false; p.receiveShadow = false;
     const vel = new THREE.Vector3(
-      (Math.random()-0.5)*8, 3+Math.random()*6, (Math.random()-0.5)*8
+      (Math.random()-0.5)*6, 2+Math.random()*5, (Math.random()-0.5)*6
     );
     scene.add(p);
     killParticles.push({ mesh:p, vel, age:0 });
@@ -690,10 +695,6 @@ const dragon = {
   attackCooldown: 2.5,
   // Shadow bolts
   shadowBolts: [],
-  // Teleport
-  teleportTimer: 8,
-  teleporting: false,
-  teleportPhase: 0,
   // Shadow wave AoE
   waveTimer: 6,
   // Swoop attack
@@ -701,7 +702,14 @@ const dragon = {
   swooping: false,
   swoopPhase: 0,
   swoopTarget: new THREE.Vector3(),
-  swoopOrigin: new THREE.Vector3()
+  swoopOrigin: new THREE.Vector3(),
+  // Flying patrol
+  flyAngle: 0,
+  flySpeed: 3.0,
+  flyRadius: 30,
+  flyCenterX: DRAG_X,
+  flyCenterZ: DRAG_Z,
+  flyPatrolTimer: 0
 };
 
 function updateHpBar() {
@@ -1039,8 +1047,8 @@ function animate() {
       tu.walkTimer = tu.walking ? (3+Math.random()*4) : (2+Math.random()*3);
     }
     if (tu.walking) {
-      tu.pos.x += Math.sin(tu.angle) * tu.speed * dt;
-      tu.pos.z += Math.cos(tu.angle) * tu.speed * dt;
+      tu.pos.x -= Math.sin(tu.angle) * tu.speed * dt;
+      tu.pos.z -= Math.cos(tu.angle) * tu.speed * dt;
       tu.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, tu.pos.x));
       tu.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, tu.pos.z));
     }
@@ -1079,9 +1087,43 @@ function animate() {
   //  VEXMOR — AI & animation
   // ────────────────────────────────────────────────────────
   if (dragon.alive && !dragon.exploding) {
-    // Hover (more erratic than Ignaroth)
-    dragon.pos.y = DRAG_BASE_Y + Math.sin(t * 2.2) * 0.7 + Math.sin(t * 4.1) * 0.2;
-    dragon.mesh.position.y = dragon.pos.y;
+    const dxd = ps.pos.x - dragon.pos.x, dzd = ps.pos.z - dragon.pos.z;
+    const distPlayer = Math.sqrt(dxd*dxd + dzd*dzd);
+
+    // ── FLYING PATROL — dragon slowly flies around the world ──
+    if (!dragon.swooping) {
+      // Fly in a slow wandering pattern, drifting toward player
+      dragon.flyPatrolTimer += dt;
+
+      // Slowly orbit but bias toward player's general area
+      dragon.flyAngle += dt * 0.3;
+      // Shift center toward player over time
+      dragon.flyCenterX += (ps.pos.x - dragon.flyCenterX) * dt * 0.08;
+      dragon.flyCenterZ += (ps.pos.z - dragon.flyCenterZ) * dt * 0.08;
+      // Keep center in bounds
+      dragon.flyCenterX = Math.max(-60, Math.min(60, dragon.flyCenterX));
+      dragon.flyCenterZ = Math.max(-60, Math.min(60, dragon.flyCenterZ));
+
+      // Speed up when far from player, slow down when close (catchable)
+      const speedMult = distPlayer > 25 ? 0.6 : (distPlayer > 12 ? 1.0 : 0.3);
+      const flyR = dragon.flyRadius * (0.7 + Math.sin(t * 0.4) * 0.3);
+
+      const targetX = dragon.flyCenterX + Math.cos(dragon.flyAngle) * flyR * speedMult;
+      const targetZ = dragon.flyCenterZ + Math.sin(dragon.flyAngle) * flyR * speedMult;
+
+      // Smoothly move toward target position
+      dragon.pos.x += (targetX - dragon.pos.x) * dt * dragon.flySpeed * 0.15;
+      dragon.pos.z += (targetZ - dragon.pos.z) * dt * dragon.flySpeed * 0.15;
+      // Clamp to bounds
+      dragon.pos.x = Math.max(-BOUNDARY+10, Math.min(BOUNDARY-10, dragon.pos.x));
+      dragon.pos.z = Math.max(-BOUNDARY+10, Math.min(BOUNDARY-10, dragon.pos.z));
+
+      // Hover height follows terrain
+      const flyBaseY = getTerrainHeight(dragon.pos.x, dragon.pos.z) + 5;
+      dragon.pos.y = flyBaseY + Math.sin(t * 2.2) * 0.7 + Math.sin(t * 4.1) * 0.2;
+    }
+
+    dragon.mesh.position.copy(dragon.pos);
 
     // Wing flap (faster, more aggressive)
     const flap = Math.sin(t * 4.5) * 0.5;
@@ -1092,24 +1134,19 @@ function animate() {
     dragon.aura.material.opacity = 0.1 + Math.sin(t * 2) * 0.08;
     dragon.aura.scale.setScalar(1 + Math.sin(t * 1.5) * 0.05);
 
-    // Face George
-    const dxd = ps.pos.x - dragon.pos.x, dzd = ps.pos.z - dragon.pos.z;
-    const distPlayer = Math.sqrt(dxd*dxd + dzd*dzd);
-    if (distPlayer < 60) {
-      const wantAngle = Math.atan2(dxd, dzd);
-      let diff = wantAngle - dragon.angle;
-      while (diff >  Math.PI) diff -= 2*Math.PI;
-      while (diff < -Math.PI) diff += 2*Math.PI;
-      dragon.angle += diff * Math.min(dt * 2.0, 1);
-    }
+    // Always face George
+    const wantAngle = Math.atan2(dxd, dzd);
+    let diff = wantAngle - dragon.angle;
+    while (diff >  Math.PI) diff -= 2*Math.PI;
+    while (diff < -Math.PI) diff += 2*Math.PI;
+    dragon.angle += diff * Math.min(dt * 3.0, 1);
     dragon.mesh.rotation.y = dragon.angle;
 
     // ── ATTACK: Shadow Bolt ──
-    if (distPlayer < 45 && ps.alive) {
+    if (distPlayer < 50 && ps.alive) {
       dragon.attackTimer -= dt;
       if (dragon.attackTimer <= 0) {
         spawnShadowBolt();
-        // Fire rate increases as HP drops
         const hpRatio = dragon.hp / dragon.maxHp;
         dragon.attackTimer = dragon.attackCooldown * (0.5 + hpRatio * 0.5);
       }
@@ -1119,7 +1156,6 @@ function animate() {
     if (distPlayer < 35 && ps.alive) {
       dragon.waveTimer -= dt;
       if (dragon.waveTimer <= 0) {
-        // Spawn ring of shadow bolts radiating outward
         for (let i = 0; i < 10; i++) {
           const angle = (i / 10) * Math.PI * 2;
           const bolt = mkGlowBox(0.4, 0.4, 0.4, 0x9933ff, 0x6600cc, 0, 0, 0);
@@ -1134,7 +1170,7 @@ function animate() {
     }
 
     // ── SWOOP ATTACK (charges at player) ──
-    if (distPlayer < 30 && distPlayer > 8 && ps.alive && !dragon.swooping && !dragon.teleporting) {
+    if (distPlayer < 30 && distPlayer > 8 && ps.alive && !dragon.swooping) {
       dragon.swoopTimer -= dt;
       if (dragon.swoopTimer <= 0) {
         dragon.swooping = true;
@@ -1154,63 +1190,12 @@ function animate() {
         dragon.mesh.position.copy(dragon.pos);
         if (ps.pos.distanceTo(dragon.pos) < 3 && ps.alive) damagePlayer();
       } else if (dragon.swoopPhase < swoopDur + 0.8) {
-        // Return to hover
         const baseY = getTerrainHeight(dragon.pos.x, dragon.pos.z) + 5;
         dragon.pos.y += (baseY - dragon.pos.y) * dt * 3;
         dragon.mesh.position.y = dragon.pos.y;
       } else {
         dragon.swooping = false;
         dragon.swoopTimer = 6 + Math.random() * 4;
-        DRAG_BASE_Y_CURRENT = getTerrainHeight(dragon.pos.x, dragon.pos.z) + 5;
-      }
-    }
-
-    // ── TELEPORT (when below 50% HP) ──
-    if (dragon.hp <= dragon.maxHp / 2) {
-      dragon.teleportTimer -= dt;
-      if (dragon.teleportTimer <= 0 && !dragon.teleporting) {
-        dragon.teleporting = true;
-        dragon.teleportPhase = 0;
-      }
-    }
-
-    if (dragon.teleporting) {
-      dragon.teleportPhase += dt;
-      if (dragon.teleportPhase < 0.5) {
-        // Fade out
-        dragon.mesh.traverse(child => {
-          if (child.material) {
-            child.material.transparent = true;
-            child.material.opacity = 1 - dragon.teleportPhase * 2;
-          }
-        });
-      } else if (dragon.teleportPhase < 0.6) {
-        // Move to new position
-        const newX = (Math.random() - 0.5) * 60;
-        const newZ = (Math.random() - 0.5) * 60;
-        dragon.pos.x = newX;
-        dragon.pos.z = newZ;
-        dragon.mesh.position.x = newX;
-        dragon.mesh.position.z = newZ;
-        DRAG_BASE_Y_CURRENT = getTerrainHeight(newX, newZ) + 5;
-      } else if (dragon.teleportPhase < 1.1) {
-        // Fade in
-        const fadeIn = (dragon.teleportPhase - 0.6) * 2;
-        dragon.mesh.traverse(child => {
-          if (child.material) {
-            child.material.opacity = Math.min(fadeIn, child === dragon.aura ? 0.15 : 1);
-          }
-        });
-      } else {
-        // Done
-        dragon.teleporting = false;
-        dragon.teleportTimer = 5 + Math.random() * 4;
-        dragon.mesh.traverse(child => {
-          if (child.material && child !== dragon.aura) {
-            child.material.opacity = 1;
-            child.material.transparent = false;
-          }
-        });
       }
     }
 
@@ -1226,15 +1211,6 @@ function animate() {
       dragonParts.eyeMatL.emissiveIntensity = 1.2 + f * 3;
       dragonParts.eyeMatR.emissiveIntensity = 1.2 + f * 3;
     }
-  }
-
-  // Mutable base Y for teleporting
-  if (dragon.alive && !dragon.teleporting) {
-    dragon.pos.y = (typeof DRAG_BASE_Y_CURRENT !== 'undefined' ? DRAG_BASE_Y_CURRENT : DRAG_BASE_Y)
-                   + Math.sin(t * 2.2) * 0.7 + Math.sin(t * 4.1) * 0.2;
-    dragon.mesh.position.y = dragon.pos.y;
-    dragon.mesh.position.x = dragon.pos.x;
-    dragon.mesh.position.z = dragon.pos.z;
   }
 
   // ────────────────────────────────────────────────────────
@@ -1294,8 +1270,6 @@ function animate() {
 
   renderer.render(scene, camera);
 }
-
-let DRAG_BASE_Y_CURRENT = DRAG_BASE_Y;
 
 // ═══════════════════════════════════════════════════════════
 //  HIT DRAGON
