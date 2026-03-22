@@ -582,8 +582,18 @@ function shootArrow() {
   arrow.position.copy(ps.pos);
   arrow.position.y += 1.5;
 
-  // Direction player is facing
-  const dir = new THREE.Vector3(-Math.sin(ps.angle), 0.05, -Math.cos(ps.angle)).normalize();
+  // Direction — aim toward dragon if roughly facing it, otherwise shoot forward
+  let aimY = 0.15;
+  const fwd = new THREE.Vector3(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
+  if (dragon.alive) {
+    const toDragon = new THREE.Vector3().subVectors(dragon.pos, arrow.position);
+    const flatDragon = new THREE.Vector3(toDragon.x, 0, toDragon.z).normalize();
+    if (flatDragon.dot(fwd) > 0.3) {
+      // Aim at the dragon
+      aimY = toDragon.y / toDragon.length() + 0.05;
+    }
+  }
+  const dir = new THREE.Vector3(fwd.x, aimY, fwd.z).normalize();
   arrow.rotation.y = ps.angle;
 
   scene.add(arrow);
@@ -791,7 +801,7 @@ const dragon = {
   // Flying patrol
   flyAngle: 0,
   flySpeed: 3.0,
-  flyRadius: 30,
+  flyRadius: 18,
   flyCenterX: DRAG_X,
   flyCenterZ: DRAG_Z,
   flyPatrolTimer: 0
@@ -1043,12 +1053,12 @@ function animate() {
     const a = arrowList[ai];
     a.age += dt;
     a.pos.x += a.vel.x * dt;
-    a.pos.y += a.vel.y * dt - 4 * dt * dt; // slight gravity
+    a.pos.y += a.vel.y * dt - 1.5 * dt * dt; // slight gravity
     a.pos.z += a.vel.z * dt;
     a.mesh.position.copy(a.pos);
 
     // Hit dragon
-    if (dragon.alive && a.pos.distanceTo(dragon.pos) < 5) {
+    if (dragon.alive && a.pos.distanceTo(dragon.pos) < 7) {
       hitDragon();
       scene.remove(a.mesh);
       arrowList.splice(ai, 1);
@@ -1264,24 +1274,24 @@ function animate() {
       dragon.flyPatrolTimer += dt;
 
       // Slowly orbit but bias toward player's general area
-      dragon.flyAngle += dt * 0.3;
+      dragon.flyAngle += dt * 0.12;
       // Shift center toward player over time
-      dragon.flyCenterX += (ps.pos.x - dragon.flyCenterX) * dt * 0.08;
-      dragon.flyCenterZ += (ps.pos.z - dragon.flyCenterZ) * dt * 0.08;
+      dragon.flyCenterX += (ps.pos.x - dragon.flyCenterX) * dt * 0.04;
+      dragon.flyCenterZ += (ps.pos.z - dragon.flyCenterZ) * dt * 0.04;
       // Keep center in bounds
       dragon.flyCenterX = Math.max(-60, Math.min(60, dragon.flyCenterX));
       dragon.flyCenterZ = Math.max(-60, Math.min(60, dragon.flyCenterZ));
 
       // Speed up when far from player, slow down when close (catchable)
-      const speedMult = distPlayer > 25 ? 0.6 : (distPlayer > 12 ? 1.0 : 0.3);
+      const speedMult = distPlayer > 25 ? 0.4 : (distPlayer > 12 ? 0.5 : 0.15);
       const flyR = dragon.flyRadius * (0.7 + Math.sin(t * 0.4) * 0.3);
 
       const targetX = dragon.flyCenterX + Math.cos(dragon.flyAngle) * flyR * speedMult;
       const targetZ = dragon.flyCenterZ + Math.sin(dragon.flyAngle) * flyR * speedMult;
 
       // Smoothly move toward target position
-      dragon.pos.x += (targetX - dragon.pos.x) * dt * dragon.flySpeed * 0.15;
-      dragon.pos.z += (targetZ - dragon.pos.z) * dt * dragon.flySpeed * 0.15;
+      dragon.pos.x += (targetX - dragon.pos.x) * dt * dragon.flySpeed * 0.08;
+      dragon.pos.z += (targetZ - dragon.pos.z) * dt * dragon.flySpeed * 0.08;
       // Clamp to bounds
       dragon.pos.x = Math.max(-BOUNDARY+10, Math.min(BOUNDARY-10, dragon.pos.x));
       dragon.pos.z = Math.max(-BOUNDARY+10, Math.min(BOUNDARY-10, dragon.pos.z));

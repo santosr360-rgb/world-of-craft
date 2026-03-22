@@ -316,6 +316,28 @@
     .dragon-status.unlocked { color: #5a8f3f; }
     .dragon-status.unlocked::before { content: "⚔️ "; }
 
+    .dragon-play {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 10px 24px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(135deg, var(--dragon-color, var(--fire-orange)), rgba(0,0,0,0.4));
+      border: 1px solid var(--dragon-color, var(--fire-orange));
+      cursor: pointer;
+      transition: all 0.2s ease;
+      clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+    }
+    .dragon-play:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 20px var(--dragon-color, var(--fire-orange));
+    }
+
     /* ── FEATURES ROW ── */
     .features-section {
       width: 100%;
@@ -416,10 +438,7 @@
       <h1 class="game-title">World of Craft</h1>
       <p class="tagline">Build. Explore. Survive. Defeat all six ancient dragons and save the realm.</p>
       <div class="cta-row">
-        <a href="game.html" class="btn btn-primary">World 1</a>
-        <a href="game.html?level=2" class="btn btn-primary" style="background: linear-gradient(135deg, #00bfff, #0066aa);">World 2</a>
-        <a href="world3.html" class="btn btn-primary" style="background: linear-gradient(135deg, #9c27b0, #6a0080);">World 3</a>
-        <a href="#dragons" class="btn btn-secondary">View Dragons</a>
+        <a href="#dragons" class="btn btn-primary">Play Now</a>
       </div>
     </section>
 
@@ -436,20 +455,23 @@
           <div class="dragon-name">Ignaroth — The Flame King</div>
           <p class="dragon-desc">Ancient lord of volcanic lands. Breathes molten rock and commands fire elementals. Found deep within the Ember Wastes.</p>
           <div class="dragon-status unlocked">Available — The Ember Wastes</div>
+          <a href="game.html" class="dragon-play">⚔ Enter World 1</a>
         </div>
 
         <div class="dragon-card" style="--dragon-color:#00bfff;">
           <span class="dragon-icon">🐲</span>
           <div class="dragon-name">Glacius — The Frozen Terror</div>
           <p class="dragon-desc">Rules the eternal blizzard peaks. His frost breath can freeze entire structures solid in seconds.</p>
-          <div class="dragon-status locked">Locked — Defeat Ignaroth first</div>
+          <div class="dragon-status unlocked">Available — The Frozen Peaks</div>
+          <a href="game.html?level=2" class="dragon-play">❄ Enter World 2</a>
         </div>
 
         <div class="dragon-card" style="--dragon-color:#9c27b0;">
           <span class="dragon-icon">🐉</span>
           <div class="dragon-name">Vexmor — Shadow Wraith</div>
           <p class="dragon-desc">Born of darkness, he lurks in the underground labyrinth. His scales absorb light and his roar shatters stone.</p>
-          <div class="dragon-status locked">Locked — Defeat 2 dragons first</div>
+          <div class="dragon-status unlocked">Available — The Shadow Labyrinth</div>
+          <a href="world3.html" class="dragon-play">👁 Enter World 3</a>
         </div>
 
         <div class="dragon-card" style="--dragon-color:#4caf50;">
