@@ -155,11 +155,13 @@
 
   <div id="sword-hud">⚔ SHADOW BLADE EQUIPPED</div>
   <div id="pickup-hint">⚔ Walk closer to pick up the Shadow Blade!</div>
+  <div id="bow-pickup-hint" style="display:none; position:fixed; bottom:130px; left:50%; transform:translateX(-50%); font-family:'Cinzel',serif; font-size:0.75rem; letter-spacing:2px; color:#fff; text-shadow:0 0 8px #00ccff; background:rgba(0,0,0,0.5); padding:6px 16px; border:1px solid #0088aa; pointer-events:none; z-index:200;">🏹 Walk closer to pick up the Shadow Bow!</div>
+  <div id="bow-hud" style="display:none; position:fixed; bottom:80px; left:20px; font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:2px; color:#55ddff; text-shadow:0 0 10px #0099cc; pointer-events:none; z-index:200; background:rgba(0,0,0,0.45); padding:6px 14px; border:1px solid #006688;">🏹 SHADOW BOW — <span id="arrow-count">10</span> ARROWS</div>
   <div id="victory-msg">VEXMOR DEFEATED!<span class="sub">The Shadow Labyrinth is purified.</span></div>
   <div id="death-msg">YOU HAVE FALLEN<span class="sub">Press R to respawn</span></div>
   <div id="hit-flash"></div>
   <div id="vignette"></div>
-  <div id="controls-hint">↑↓ Move &nbsp;·&nbsp; ←→ Turn &nbsp;·&nbsp; SPACE Jump &nbsp;·&nbsp; F Attack</div>
+  <div id="controls-hint">↑↓ Move &nbsp;·&nbsp; ←→ Turn &nbsp;·&nbsp; SPACE Jump &nbsp;·&nbsp; F Attack &nbsp;·&nbsp; G Shoot</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
 <script>'use strict';
@@ -507,6 +509,88 @@ const sword = { pickedUp: false };
 const swing = { active:false, timer:0, duration:0.45, hitRegistered:false, cooldown:0, creatureHits:[] };
 
 // ═══════════════════════════════════════════════════════════
+//  SHADOW BOW (ranged weapon pickup)
+// ═══════════════════════════════════════════════════════════
+const BOW_POS = new THREE.Vector3(-14, 0, 16);
+BOW_POS.y = getTerrainHeight(BOW_POS.x, BOW_POS.z) + 0.6;
+
+// Ground bow mesh
+const groundBow = new THREE.Group();
+// Bow body (curved arc)
+groundBow.add(mkGlowBox(0.06, 1.4, 0.06, 0x2288aa, 0x0066aa, 0, 0, 0));
+groundBow.add(mkGlowBox(0.06, 0.4, 0.06, 0x2288aa, 0x0066aa, -0.18, 0.65, 0));
+groundBow.add(mkGlowBox(0.06, 0.4, 0.06, 0x2288aa, 0x0066aa, -0.18, -0.65, 0));
+groundBow.add(mkGlowBox(0.06, 0.25, 0.06, 0x2288aa, 0x0066aa, -0.32, 0.78, 0));
+groundBow.add(mkGlowBox(0.06, 0.25, 0.06, 0x2288aa, 0x0066aa, -0.32, -0.78, 0));
+// String
+groundBow.add(mkGlowBox(0.02, 1.5, 0.02, 0x88ccff, 0x44aadd, 0.02, 0, 0));
+// Glow ring
+const bowGlow = mkGlowBox(0.5, 0.5, 0.5, 0x00aaff, 0x0077cc, 0, 0, 0);
+bowGlow.material.transparent = true; bowGlow.material.opacity = 0.2;
+groundBow.add(bowGlow);
+// Light
+const bowLight = new THREE.PointLight(0x00aaff, 1.5, 12);
+bowLight.position.set(0, 0.5, 0);
+groundBow.add(bowLight);
+
+groundBow.position.copy(BOW_POS);
+groundBow.rotation.z = Math.PI / 4;
+scene.add(groundBow);
+
+// Hand bow (attached to left arm)
+const handBow = new THREE.Group();
+handBow.add(mkGlowBox(0.05, 1.0, 0.05, 0x2288aa, 0x0066aa, 0, 0, 0));
+handBow.add(mkGlowBox(0.05, 0.3, 0.05, 0x2288aa, 0x0066aa, -0.12, 0.45, 0));
+handBow.add(mkGlowBox(0.05, 0.3, 0.05, 0x2288aa, 0x0066aa, -0.12, -0.45, 0));
+handBow.add(mkGlowBox(0.02, 1.1, 0.02, 0x88ccff, 0x44aadd, 0.02, 0, 0));
+handBow.position.set(0, -0.5, -0.15);
+handBow.visible = false;
+armLP.add(handBow);
+
+const bow = { pickedUp: false, arrows: 15, maxArrows: 15, cooldown: 0 };
+const arrowList = [];
+const _arrowGeo = new THREE.BoxGeometry(1, 1, 1);
+
+const bowPickupHintEl = document.getElementById('bow-pickup-hint');
+const bowHudEl = document.getElementById('bow-hud');
+const arrowCountEl = document.getElementById('arrow-count');
+
+function shootArrow() {
+  if (bow.arrows <= 0 || bow.cooldown > 0) return;
+  bow.arrows--;
+  bow.cooldown = 0.4;
+  arrowCountEl.textContent = bow.arrows;
+
+  // Arrow mesh
+  const arrow = new THREE.Group();
+  // Shaft
+  const shaft = new THREE.Mesh(_arrowGeo, new THREE.MeshLambertMaterial({ color: 0x55ccff, emissive: 0x2299cc, emissiveIntensity: 0.8 }));
+  shaft.scale.set(0.04, 0.04, 0.8);
+  arrow.add(shaft);
+  // Arrowhead
+  const head = new THREE.Mesh(_arrowGeo, new THREE.MeshLambertMaterial({ color: 0x88eeff, emissive: 0x44ccff, emissiveIntensity: 1.0 }));
+  head.scale.set(0.08, 0.08, 0.12);
+  head.position.z = -0.45;
+  arrow.add(head);
+  // Trail glow
+  const trail = new THREE.Mesh(_arrowGeo, new THREE.MeshLambertMaterial({ color: 0x00aaff, emissive: 0x0077cc, emissiveIntensity: 1.2, transparent: true, opacity: 0.4 }));
+  trail.scale.set(0.1, 0.1, 0.4);
+  trail.position.z = 0.3;
+  arrow.add(trail);
+
+  // Position at player
+  arrow.position.copy(ps.pos);
+  arrow.position.y += 1.5;
+
+  // Direction player is facing
+  const dir = new THREE.Vector3(-Math.sin(ps.angle), 0.05, -Math.cos(ps.angle)).normalize();
+  arrow.rotation.y = ps.angle;
+
+  scene.add(arrow);
+  arrowList.push({ mesh: arrow, vel: dir.multiplyScalar(40), age: 0, pos: arrow.position.clone() });
+}
+
+// ═══════════════════════════════════════════════════════════
 //  SCORE SYSTEM
 // ═══════════════════════════════════════════════════════════
 let score = 0;
@@ -734,6 +818,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyF' && sword.pickedUp && !swing.active && swing.cooldown <= 0 && ps.alive) {
     swing.active = true; swing.timer = 0; swing.hitRegistered = false; swing.creatureHits = [];
   }
+  if (e.code === 'KeyG' && bow.pickedUp && ps.alive) shootArrow();
   if (e.code === 'KeyR' && !ps.alive) respawnPlayer();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -929,6 +1014,86 @@ function animate() {
   }
 
   // ────────────────────────────────────────────────────────
+  //  BOW — ground spin + pickup detection
+  // ────────────────────────────────────────────────────────
+  if (!bow.pickedUp) {
+    groundBow.rotation.y = groundSwordSpinTime * 0.9;
+    groundBow.position.y = BOW_POS.y + Math.sin(groundSwordSpinTime * 1.8 + 1) * 0.12;
+
+    const bx = ps.pos.x - BOW_POS.x, bz = ps.pos.z - BOW_POS.z;
+    const distToBow = Math.sqrt(bx*bx + bz*bz);
+    bowPickupHintEl.style.display = distToBow < 6 ? 'block' : 'none';
+
+    if (distToBow < 2.5) {
+      bow.pickedUp = true;
+      scene.remove(groundBow);
+      handBow.visible = true;
+      bowHudEl.style.display = 'block';
+      bowPickupHintEl.style.display = 'none';
+    }
+  }
+
+  // Bow cooldown
+  if (bow.cooldown > 0) bow.cooldown -= dt;
+
+  // ────────────────────────────────────────────────────────
+  //  ARROWS — update flight + hit detection
+  // ────────────────────────────────────────────────────────
+  for (let ai = arrowList.length - 1; ai >= 0; ai--) {
+    const a = arrowList[ai];
+    a.age += dt;
+    a.pos.x += a.vel.x * dt;
+    a.pos.y += a.vel.y * dt - 4 * dt * dt; // slight gravity
+    a.pos.z += a.vel.z * dt;
+    a.mesh.position.copy(a.pos);
+
+    // Hit dragon
+    if (dragon.alive && a.pos.distanceTo(dragon.pos) < 5) {
+      hitDragon();
+      scene.remove(a.mesh);
+      arrowList.splice(ai, 1);
+      continue;
+    }
+
+    // Hit turtles
+    let hitCreature = false;
+    for (let ti = turtleList.length - 1; ti >= 0; ti--) {
+      const tu = turtleList[ti];
+      if (!tu.alive) continue;
+      if (a.pos.distanceTo(tu.pos) < 2) {
+        tu.alive = false;
+        scene.remove(tu.mesh);
+        spawnKillEffect(tu.pos, [0x33cc66, 0x22aa55, 0x44ff88, 0xffffff]);
+        addScore(1);
+        hitCreature = true;
+        break;
+      }
+    }
+    if (hitCreature) { scene.remove(a.mesh); arrowList.splice(ai, 1); continue; }
+
+    // Hit bats
+    for (let bi = bats.length - 1; bi >= 0; bi--) {
+      const ba = bats[bi];
+      if (!ba.alive) continue;
+      if (a.pos.distanceTo(ba.pos) < 2) {
+        ba.alive = false;
+        scene.remove(ba.mesh);
+        spawnKillEffect(ba.pos, [0x7733bb, 0x5522aa, 0xff0044, 0xffffff]);
+        addScore(2);
+        hitCreature = true;
+        break;
+      }
+    }
+    if (hitCreature) { scene.remove(a.mesh); arrowList.splice(ai, 1); continue; }
+
+    // Remove if too old or hit ground
+    if (a.age > 3 || a.pos.y < getTerrainHeight(a.pos.x, a.pos.z)) {
+      scene.remove(a.mesh);
+      arrowList.splice(ai, 1);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────
   //  SWORD SWING ANIMATION
   // ────────────────────────────────────────────────────────
   if (swing.active) {
@@ -969,6 +1134,7 @@ function animate() {
             scene.remove(tu.mesh);
             spawnKillEffect(tu.pos, [0x33cc66, 0x22aa55, 0x44ff88, 0xffffff]);
             addScore(1);
+            if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows++; arrowCountEl.textContent = bow.arrows; }
             swing.creatureHits.push(ti);
           }
         }
@@ -986,6 +1152,7 @@ function animate() {
             scene.remove(ba.mesh);
             spawnKillEffect(ba.pos, [0x7733bb, 0x5522aa, 0xff0044, 0xffffff]);
             addScore(2);
+            if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows += 2; arrowCountEl.textContent = Math.min(bow.arrows, bow.maxArrows); }
             swing.creatureHits.push('b'+bi);
           }
         }
