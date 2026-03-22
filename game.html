@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self';">
     <title>World of Craft — Play</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -353,7 +354,7 @@
     <div id="player-hp">♥ ♥ ♥</div>
     <div id="controls-hint">↑↓ Move  ·  ←→ Turn  ·  SPACE Jump  ·  F Attack  ·  R Respawn</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
     <script>
         'use strict';
 
@@ -1676,7 +1677,10 @@
                 if (currentLevel === 1) {
                     if (victory.timer > 4.5 && victory.timer < 7.0) {
                         document.getElementById('level-transition').style.display = 'block';
-                        document.getElementById('level-transition').innerHTML = 'THE EMBER WASTES GROW COLD...' + '<span class="sub">❄ A NEW EVIL AWAKENS ❄</span>';
+                        const lt1 = document.getElementById('level-transition');
+                        lt1.textContent = '';
+                        lt1.appendChild(document.createTextNode('THE EMBER WASTES GROW COLD...'));
+                        const s1 = document.createElement('span'); s1.className = 'sub'; s1.textContent = '❄ A NEW EVIL AWAKENS ❄'; lt1.appendChild(s1);
                     }
                     if (victory.timer >= 7.0 && !level2StartedFlag) {
                         level2StartedFlag = true;
@@ -1686,7 +1690,10 @@
                 if (currentLevel === 2) {
                     if (victory.timer > 4.5 && victory.timer < 7.0) {
                         document.getElementById('level-transition').style.display = 'block';
-                        document.getElementById('level-transition').innerHTML = 'THE ICE MELTS INTO SHADOW...' + '<span class="sub">👁 A DARKER EVIL STIRS 👁</span>';
+                        const lt2 = document.getElementById('level-transition');
+                        lt2.textContent = '';
+                        lt2.appendChild(document.createTextNode('THE ICE MELTS INTO SHADOW...'));
+                        const s2 = document.createElement('span'); s2.className = 'sub'; s2.textContent = '👁 A DARKER EVIL STIRS 👁'; lt2.appendChild(s2);
                     }
                     if (victory.timer >= 7.0 && !level3StartedFlag) {
                         level3StartedFlag = true;

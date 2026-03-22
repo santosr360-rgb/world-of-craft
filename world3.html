@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self';">
   <title>World of Craft — Vexmor's Labyrinth</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
   <style>
@@ -160,7 +161,7 @@
   <div id="vignette"></div>
   <div id="controls-hint">↑↓ Move &nbsp;·&nbsp; ←→ Turn &nbsp;·&nbsp; SPACE Jump &nbsp;·&nbsp; F Attack</div>
 
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
 <script>'use strict';
 
 // ═══════════════════════════════════════════════════════════
