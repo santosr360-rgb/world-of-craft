@@ -8,7 +8,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { overflow: hidden; background: #0a0010; }
-    canvas { display: block; }
+    canvas { display: block; position: relative; z-index: 0; }
 
     #back-btn {
       position: fixed; top: 14px; left: 14px;
@@ -48,10 +48,20 @@
 
     /* Player HP Hearts */
     #player-hp {
-      position: fixed; bottom: 22px; right: 20px;
-      font-size: 1.6rem; letter-spacing: 4px;
+      position: fixed; bottom: 50px; right: 20px;
+      font-family: sans-serif; font-size: 1.8rem; letter-spacing: 6px;
       color: #ff3366;
-      text-shadow: 0 0 12px #ff3366, 0 0 24px #cc0044, 0 0 40px #ff0066;
+      text-shadow: 0 0 14px #ff3366, 0 0 28px #cc0044, 0 0 50px #ff0066;
+      pointer-events: none; z-index: 200;
+    }
+
+    /* Score */
+    #score-hud {
+      position: fixed; top: 18px; right: 20px;
+      font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 3px;
+      color: #eebb55;
+      text-shadow: 0 0 10px #cc9933, 0 0 20px #aa7722;
+      background: rgba(0,0,0,0.5); padding: 6px 14px; border: 1px solid #886622;
       pointer-events: none; z-index: 200;
     }
 
@@ -107,11 +117,7 @@
     #death-msg .sub {
       display: block; font-size: 0.45em; margin-top: 14px;
       color: #aa6666; letter-spacing: 3px;
-      cursor: pointer; pointer-events: all;
-      border: 1px solid #884444; padding: 8px 20px;
-      transition: color 0.2s, border-color 0.2s;
     }
-    #death-msg .sub:hover { color: #ff6666; border-color: #ff6666; }
 
     /* Hit flash overlay */
     #hit-flash {
@@ -144,11 +150,12 @@
   </div>
 
   <div id="player-hp">♥ ♥ ♥ ♥ ♥</div>
+  <div id="score-hud">SCORE: 0</div>
 
   <div id="sword-hud">⚔ SHADOW BLADE EQUIPPED</div>
   <div id="pickup-hint">⚔ Walk closer to pick up the Shadow Blade!</div>
   <div id="victory-msg">VEXMOR DEFEATED!<span class="sub">The Shadow Labyrinth is purified.</span></div>
-  <div id="death-msg">YOU HAVE FALLEN<span class="sub" onclick="location.reload()">↻ TRY AGAIN</span></div>
+  <div id="death-msg">YOU HAVE FALLEN<span class="sub">Press R to respawn</span></div>
   <div id="hit-flash"></div>
   <div id="vignette"></div>
   <div id="controls-hint">↑↓ Move &nbsp;·&nbsp; ←→ Turn &nbsp;·&nbsp; SPACE Jump &nbsp;·&nbsp; F Attack</div>
@@ -446,7 +453,7 @@ function createBat(bx, bz) {
   root.add(mkGlowBox(0.06, 0.06, 0.04, 0xff0044, 0xff0044, -0.08, 0.06, -0.2));
   root.add(mkGlowBox(0.06, 0.06, 0.04, 0xff0044, 0xff0044, 0.08, 0.06, -0.2));
 
-  const by = 14 + Math.random() * 10;
+  const by = getTerrainHeight(bx, bz) + 2 + Math.random() * 3;
   root.position.set(bx, by, bz);
   scene.add(root);
   return {
@@ -456,11 +463,13 @@ function createBat(bx, bz) {
     speed: 3 + Math.random() * 4,
     flapPhase: Math.random() * Math.PI * 2,
     circleRadius: 5 + Math.random() * 10,
-    centerX: bx, centerZ: bz
+    centerX: bx, centerZ: bz,
+    baseY: by, alive: true
   };
 }
 
-[[0,0],[20,10],[-15,20],[10,-25],[-30,-5],[25,-18],[-20,30],[35,15]
+[[0,0],[20,10],[-15,20],[10,-25],[-30,-5],[25,-18],[-20,30],[35,15],
+ [5,-8],[-10,12],[14,6],[-22,-18],[30,25],[-36,8],[8,30],[-4,-16]
 ].forEach(([x,z]) => bats.push(createBat(x,z)));
 
 // ═══════════════════════════════════════════════════════════
@@ -494,7 +503,77 @@ handSword.visible = false;
 armRP.add(handSword);
 
 const sword = { pickedUp: false };
-const swing = { active:false, timer:0, duration:0.45, hitRegistered:false, cooldown:0 };
+const swing = { active:false, timer:0, duration:0.45, hitRegistered:false, cooldown:0, creatureHits:[] };
+
+// ═══════════════════════════════════════════════════════════
+//  SCORE SYSTEM
+// ═══════════════════════════════════════════════════════════
+let score = 0;
+const scoreEl = document.getElementById('score-hud');
+function addScore(n) {
+  score += n;
+  scoreEl.textContent = 'SCORE: ' + score;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GLOWING TURTLES (ground creatures — killable, 1 point)
+// ═══════════════════════════════════════════════════════════
+const turtleList = [];
+function createTurtle(tx, tz) {
+  const root = new THREE.Group();
+  // Shell (glowing green-purple)
+  root.add(mkGlowBox(0.7, 0.4, 0.9, 0x226644, 0x117733, 0, 0.35, 0));
+  root.add(mkGlowBox(0.75, 0.15, 0.95, 0x33aa66, 0x22aa55, 0, 0.55, 0));
+  // Shell pattern
+  root.add(mkGlowBox(0.2, 0.08, 0.2, 0x44cc88, 0x33bb77, 0, 0.62, 0));
+  root.add(mkGlowBox(0.15, 0.08, 0.15, 0x44cc88, 0x33bb77, 0.2, 0.6, -0.15));
+  root.add(mkGlowBox(0.15, 0.08, 0.15, 0x44cc88, 0x33bb77, -0.2, 0.6, 0.15));
+  // Head
+  root.add(mkGlowBox(0.22, 0.22, 0.25, 0x55bb77, 0x33aa55, 0, 0.32, -0.55));
+  // Eyes
+  root.add(mkGlowBox(0.06, 0.06, 0.04, 0xffee44, 0xffcc00, -0.06, 0.36, -0.68));
+  root.add(mkGlowBox(0.06, 0.06, 0.04, 0xffee44, 0xffcc00, 0.06, 0.36, -0.68));
+  // Legs
+  root.add(mkGlowBox(0.14, 0.15, 0.14, 0x55bb77, 0x33aa55, -0.3, 0.1, -0.3));
+  root.add(mkGlowBox(0.14, 0.15, 0.14, 0x55bb77, 0x33aa55, 0.3, 0.1, -0.3));
+  root.add(mkGlowBox(0.14, 0.15, 0.14, 0x55bb77, 0x33aa55, -0.3, 0.1, 0.3));
+  root.add(mkGlowBox(0.14, 0.15, 0.14, 0x55bb77, 0x33aa55, 0.3, 0.1, 0.3));
+  // Glow light under turtle
+  const gl = new THREE.PointLight(0x33cc66, 0.6, 8);
+  gl.position.set(0, 0.5, 0);
+  root.add(gl);
+
+  const ty = getTerrainHeight(tx, tz);
+  root.position.set(tx, ty, tz);
+  scene.add(root);
+  return {
+    mesh: root, pos: new THREE.Vector3(tx, ty, tz),
+    angle: Math.random() * Math.PI * 2,
+    speed: 0.6 + Math.random() * 0.4,
+    walkTimer: 2 + Math.random() * 4,
+    walking: Math.random() > 0.3,
+    alive: true
+  };
+}
+
+[[12,4],[-8,14],[16,-16],[-20,8],[6,22],[-14,-22],[24,18],
+ [-28,14],[18,-30],[-6,-30],[30,-8],[-34,-12],[10,34],[-18,28]
+].forEach(([x,z]) => turtleList.push(createTurtle(x,z)));
+
+// Kill effects
+const killParticles = [];
+function spawnKillEffect(pos, colors) {
+  for (let i = 0; i < 8; i++) {
+    const s = 0.15 + Math.random() * 0.25;
+    const p = mkGlowBox(s, s, s, colors[Math.floor(Math.random()*colors.length)], colors[0]);
+    p.position.copy(pos);
+    const vel = new THREE.Vector3(
+      (Math.random()-0.5)*8, 3+Math.random()*6, (Math.random()-0.5)*8
+    );
+    scene.add(p);
+    killParticles.push({ mesh:p, vel, age:0 });
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 //  VEXMOR — SHADOW WRAITH
@@ -609,14 +688,20 @@ const dragon = {
   // Attack pattern
   attackTimer: 3,
   attackCooldown: 2.5,
-  isCharging: false,
-  chargeTimer: 0,
   // Shadow bolts
   shadowBolts: [],
   // Teleport
   teleportTimer: 8,
   teleporting: false,
-  teleportPhase: 0
+  teleportPhase: 0,
+  // Shadow wave AoE
+  waveTimer: 6,
+  // Swoop attack
+  swoopTimer: 10,
+  swooping: false,
+  swoopPhase: 0,
+  swoopTarget: new THREE.Vector3(),
+  swoopOrigin: new THREE.Vector3()
 };
 
 function updateHpBar() {
@@ -638,8 +723,9 @@ window.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
   if (e.code === 'KeyF' && sword.pickedUp && !swing.active && swing.cooldown <= 0 && ps.alive) {
-    swing.active = true; swing.timer = 0; swing.hitRegistered = false;
+    swing.active = true; swing.timer = 0; swing.hitRegistered = false; swing.creatureHits = [];
   }
+  if (e.code === 'KeyR' && !ps.alive) respawnPlayer();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -847,20 +933,59 @@ function animate() {
     armRP.rotation.x = armAngle;
     armLP.rotation.x = sw * 0.3;
 
-    if (!swing.hitRegistered && t > 0.25 && t < 0.78 && dragon.alive) {
-      const distToDragon = ps.pos.distanceTo(dragon.pos);
-      if (distToDragon < 8) {
-        _gFwd.set(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
-        _toDragon.subVectors(dragon.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
-        if (_toDragon.dot(_gFwd) > 0.35) {
-          hitDragon();
-          swing.hitRegistered = true;
+    if (t > 0.25 && t < 0.78) {
+      _gFwd.set(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
+
+      // Hit dragon
+      if (!swing.hitRegistered && dragon.alive) {
+        const distToDragon = ps.pos.distanceTo(dragon.pos);
+        if (distToDragon < 8) {
+          _toDragon.subVectors(dragon.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
+          if (_toDragon.dot(_gFwd) > 0.35) {
+            hitDragon();
+            swing.hitRegistered = true;
+          }
+        }
+      }
+
+      // Hit turtles
+      for (let ti = turtleList.length - 1; ti >= 0; ti--) {
+        const tu = turtleList[ti];
+        if (!tu.alive || swing.creatureHits.includes(ti)) continue;
+        const d = ps.pos.distanceTo(tu.pos);
+        if (d < 5) {
+          const toTu = new THREE.Vector3().subVectors(tu.pos, ps.pos); toTu.y = 0; toTu.normalize();
+          if (toTu.dot(_gFwd) > 0.4) {
+            tu.alive = false;
+            scene.remove(tu.mesh);
+            spawnKillEffect(tu.pos, [0x33cc66, 0x22aa55, 0x44ff88, 0xffffff]);
+            addScore(1);
+            swing.creatureHits.push(ti);
+          }
+        }
+      }
+
+      // Hit bats
+      for (let bi = bats.length - 1; bi >= 0; bi--) {
+        const ba = bats[bi];
+        if (!ba.alive || swing.creatureHits.includes('b'+bi)) continue;
+        const d = ps.pos.distanceTo(ba.pos);
+        if (d < 5) {
+          const toBat = new THREE.Vector3().subVectors(ba.pos, ps.pos); toBat.y = 0; toBat.normalize();
+          if (toBat.dot(_gFwd) > 0.3) {
+            ba.alive = false;
+            scene.remove(ba.mesh);
+            spawnKillEffect(ba.pos, [0x7733bb, 0x5522aa, 0xff0044, 0xffffff]);
+            addScore(2);
+            swing.creatureHits.push('b'+bi);
+          }
         }
       }
     }
 
     if (swing.timer >= swing.duration) {
       swing.active = false; swing.cooldown = 0.22; armRP.rotation.x = 0;
+      swing.creatureHits = [];
     }
   }
   if (swing.cooldown > 0) swing.cooldown -= dt;
@@ -881,16 +1006,18 @@ function animate() {
   //  BATS — circle and flap
   // ────────────────────────────────────────────────────────
   bats.forEach(b => {
+    if (!b.alive) return;
     b.angle += b.speed * 0.03 * dt;
     b.pos.x = b.centerX + Math.cos(b.angle) * b.circleRadius;
     b.pos.z = b.centerZ + Math.sin(b.angle) * b.circleRadius;
-    b.pos.y += Math.sin(t * 3 + b.flapPhase) * 0.02;
+    b.pos.y = b.baseY + Math.sin(t * 3 + b.flapPhase) * 0.5;
     b.mesh.position.copy(b.pos);
     b.mesh.rotation.y = b.angle + Math.PI / 2;
-    // Wing flap
     const flapAngle = Math.sin(t * 12 + b.flapPhase) * 0.6;
     b.wingL.rotation.z = flapAngle;
     b.wingR.rotation.z = -flapAngle;
+    // Bats damage player on contact
+    if (ps.pos.distanceTo(b.pos) < 1.5 && ps.alive) damagePlayer();
   });
 
   // ────────────────────────────────────────────────────────
@@ -899,6 +1026,48 @@ function animate() {
   crystals.forEach((c, i) => {
     c.material.emissiveIntensity = 0.4 + Math.sin(t * 1.5 + i * 0.7) * 0.3;
   });
+
+  // ────────────────────────────────────────────────────────
+  //  TURTLES — AI
+  // ────────────────────────────────────────────────────────
+  turtleList.forEach(tu => {
+    if (!tu.alive) return;
+    tu.walkTimer -= dt;
+    if (tu.walkTimer <= 0) {
+      tu.walking = Math.random() < 0.6;
+      tu.angle = Math.random() * Math.PI * 2;
+      tu.walkTimer = tu.walking ? (3+Math.random()*4) : (2+Math.random()*3);
+    }
+    if (tu.walking) {
+      tu.pos.x += Math.sin(tu.angle) * tu.speed * dt;
+      tu.pos.z += Math.cos(tu.angle) * tu.speed * dt;
+      tu.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, tu.pos.x));
+      tu.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, tu.pos.z));
+    }
+    tu.pos.y = getTerrainHeight(tu.pos.x, tu.pos.z);
+    tu.mesh.position.copy(tu.pos);
+    tu.mesh.rotation.y = tu.angle;
+  });
+
+  // ────────────────────────────────────────────────────────
+  //  KILL PARTICLES
+  // ────────────────────────────────────────────────────────
+  for (let ki = killParticles.length - 1; ki >= 0; ki--) {
+    const kp = killParticles[ki];
+    kp.age += dt;
+    kp.vel.y -= 14 * dt;
+    kp.mesh.position.x += kp.vel.x * dt;
+    kp.mesh.position.y += kp.vel.y * dt;
+    kp.mesh.position.z += kp.vel.z * dt;
+    kp.mesh.rotation.x += dt * 4;
+    kp.mesh.rotation.z += dt * 3;
+    kp.mesh.material.opacity = 1 - kp.age / 1.5;
+    kp.mesh.material.transparent = true;
+    if (kp.age > 1.5) {
+      scene.remove(kp.mesh);
+      killParticles.splice(ki, 1);
+    }
+  }
 
   // ────────────────────────────────────────────────────────
   //  PURPLE LIGHT PULSE
@@ -943,6 +1112,56 @@ function animate() {
         // Fire rate increases as HP drops
         const hpRatio = dragon.hp / dragon.maxHp;
         dragon.attackTimer = dragon.attackCooldown * (0.5 + hpRatio * 0.5);
+      }
+    }
+
+    // ── SHADOW WAVE AoE ──
+    if (distPlayer < 35 && ps.alive) {
+      dragon.waveTimer -= dt;
+      if (dragon.waveTimer <= 0) {
+        // Spawn ring of shadow bolts radiating outward
+        for (let i = 0; i < 10; i++) {
+          const angle = (i / 10) * Math.PI * 2;
+          const bolt = mkGlowBox(0.4, 0.4, 0.4, 0x9933ff, 0x6600cc, 0, 0, 0);
+          bolt.material.transparent = true; bolt.material.opacity = 0.8;
+          bolt.position.copy(dragon.pos); bolt.position.y = getTerrainHeight(dragon.pos.x, dragon.pos.z) + 0.5;
+          const dir = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
+          scene.add(bolt);
+          dragon.shadowBolts.push({ mesh: bolt, vel: dir.multiplyScalar(10), age: 0 });
+        }
+        dragon.waveTimer = 4 + Math.random() * 3;
+      }
+    }
+
+    // ── SWOOP ATTACK (charges at player) ──
+    if (distPlayer < 30 && distPlayer > 8 && ps.alive && !dragon.swooping && !dragon.teleporting) {
+      dragon.swoopTimer -= dt;
+      if (dragon.swoopTimer <= 0) {
+        dragon.swooping = true;
+        dragon.swoopPhase = 0;
+        dragon.swoopOrigin.copy(dragon.pos);
+        dragon.swoopTarget.copy(ps.pos);
+        dragon.swoopTarget.y = getTerrainHeight(ps.pos.x, ps.pos.z) + 2;
+      }
+    }
+
+    if (dragon.swooping) {
+      dragon.swoopPhase += dt;
+      const swoopDur = 0.6;
+      if (dragon.swoopPhase < swoopDur) {
+        const p = dragon.swoopPhase / swoopDur;
+        dragon.pos.lerpVectors(dragon.swoopOrigin, dragon.swoopTarget, p);
+        dragon.mesh.position.copy(dragon.pos);
+        if (ps.pos.distanceTo(dragon.pos) < 3 && ps.alive) damagePlayer();
+      } else if (dragon.swoopPhase < swoopDur + 0.8) {
+        // Return to hover
+        const baseY = getTerrainHeight(dragon.pos.x, dragon.pos.z) + 5;
+        dragon.pos.y += (baseY - dragon.pos.y) * dt * 3;
+        dragon.mesh.position.y = dragon.pos.y;
+      } else {
+        dragon.swooping = false;
+        dragon.swoopTimer = 6 + Math.random() * 4;
+        DRAG_BASE_Y_CURRENT = getTerrainHeight(dragon.pos.x, dragon.pos.z) + 5;
       }
     }
 
@@ -1092,12 +1311,24 @@ function hitDragon() {
     dragon.mesh.visible = false;
     dragon.exploding = true;
     spawnExplosion();
+    addScore(15);
     victoryMsgEl.style.display = 'block';
     document.getElementById('dragon-hud').style.display = 'none';
-    // Remove remaining shadow bolts
     dragon.shadowBolts.forEach(b => scene.remove(b.mesh));
     dragon.shadowBolts = [];
   }
+}
+
+function respawnPlayer() {
+  ps.hp = ps.maxHp;
+  ps.alive = true;
+  ps.invincible = 2.0;
+  ps.pos.set(0, getTerrainHeight(0, 0), 0);
+  ps.velY = 0;
+  ps.onGround = true;
+  ps.angle = 0;
+  updatePlayerHpBar();
+  deathMsgEl.style.display = 'none';
 }
 
 animate();
