@@ -2473,9 +2473,13 @@
             sun.color.set(0xc8e8f8);
             sun.intensity = 0.7;
 
-            // Show ice temple and mural, hide fire temple from ice world
+            // Show ice temple and mural, hide fire temple and dragon from ice world
             fireTempleGroup.visible = false;
             fireMuralPlane.visible = false;
+            dragon.mesh.visible = false;
+            dragon.alive = false;
+            fireballs.forEach(fb => scene.remove(fb.mesh));
+            fireballs.length = 0;
             iceTempleGroup.visible = true;
             iceMuralPlane.visible = true;
 
