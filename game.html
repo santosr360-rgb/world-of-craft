@@ -352,7 +352,9 @@
     <div id="hit-flash"></div>
     <div id="score-hud">SCORE: 0</div>
     <div id="player-hp">♥ ♥ ♥</div>
-    <div id="controls-hint">↑↓ Move  ·  ←→ Turn  ·  SPACE Jump  ·  F Attack  ·  R Respawn</div>
+    <div id="snowball-hud" style="display:none; position:fixed; bottom:80px; left:20px; font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:2px; color:#aaddff; text-shadow:0 0 10px #0088cc; pointer-events:none; z-index:200; background:rgba(0,20,40,0.45); padding:6px 14px; border:1px solid #1166aa;">&#10052; SNOWBALLS — <span id="snowball-count">10</span></div>
+    <div id="snowball-pickup-hint" style="display:none; position:fixed; bottom:130px; left:50%; transform:translateX(-50%); font-family:'Cinzel',serif; font-size:0.75rem; letter-spacing:2px; color:#fff; text-shadow:0 0 8px #00aaff; background:rgba(0,20,40,0.5); padding:6px 16px; border:1px solid #1166aa; pointer-events:none; z-index:200;">&#10052; Walk closer to pick up Snowballs!</div>
+    <div id="controls-hint">↑↓ Move  ·  ←→ Turn  ·  SPACE Jump  ·  F Attack  ·  G Throw  ·  R Respawn</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
     <script>
@@ -555,6 +557,8 @@
             iceShards.length = 0;
             freezeShards.forEach(fs => scene.remove(fs.mesh));
             freezeShards.length = 0;
+            snowballList.forEach(sb => scene.remove(sb.mesh));
+            snowballList.length = 0;
 
             // Restore score
             score = checkpoint.score;
@@ -1251,6 +1255,63 @@
         const swing = { active:false, timer:0, duration:0.5, hitRegistered:false, cooldown:0 };
 
         // ═══════════════════════════════════════════════════════════
+        // SNOWBALL WEAPON (level 2 ranged weapon)
+        // ═══════════════════════════════════════════════════════════
+        const SNOWBALL_PICKUP_POS = new THREE.Vector3(GLAC_X - 30, 0, GLAC_Z + 8);
+        SNOWBALL_PICKUP_POS.y = getTerrainHeight(SNOWBALL_PICKUP_POS.x, SNOWBALL_PICKUP_POS.z) + 0.6;
+
+        // Ground snowball pile
+        const groundSnowball = new THREE.Group();
+        groundSnowball.add(mkBox(0.6, 0.6, 0.6, 0xeef4ff, 0, 0, 0));
+        groundSnowball.add(mkBox(0.45, 0.45, 0.45, 0xddeeff, 0.3, 0.4, 0.2));
+        groundSnowball.add(mkBox(0.35, 0.35, 0.35, 0xf0f8ff, -0.2, 0.5, -0.15));
+        const snowGlow = mkBox(0.8, 0.8, 0.8, 0x88ccff);
+        snowGlow.material.transparent = true; snowGlow.material.opacity = 0.2;
+        snowGlow.material.emissive = new THREE.Color(0x44aaff);
+        snowGlow.material.emissiveIntensity = 0.8;
+        groundSnowball.add(snowGlow);
+        groundSnowball.position.copy(SNOWBALL_PICKUP_POS);
+        groundSnowball.visible = false; // only visible in level 2
+        scene.add(groundSnowball);
+
+        const snowball = { pickedUp: false, count: 10, maxCount: 10, cooldown: 0 };
+        const snowballList = [];
+        const snowballPickupHintEl = document.getElementById('snowball-pickup-hint');
+        const snowballHudEl = document.getElementById('snowball-hud');
+        const snowballCountEl = document.getElementById('snowball-count');
+
+        function throwSnowball() {
+            if (snowball.count <= 0 || snowball.cooldown > 0 || !snowball.pickedUp) return;
+            snowball.count--;
+            snowball.cooldown = 0.5;
+            snowballCountEl.textContent = snowball.count;
+
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.35, 0.35, 0.35),
+                new THREE.MeshLambertMaterial({ color: 0xeef4ff, emissive: new THREE.Color(0x88ccff), emissiveIntensity: 0.6 })
+            );
+
+            const startPos = new THREE.Vector3().copy(ps.pos);
+            startPos.y += 1.5;
+            mesh.position.copy(startPos);
+
+            // Aim toward Glacius if roughly facing, otherwise shoot forward
+            let aimY = 0.15;
+            const fwd = new THREE.Vector3(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
+            if (glacius.alive) {
+                const toGlac = new THREE.Vector3().subVectors(glacius.pos, startPos);
+                const flatGlac = new THREE.Vector3(toGlac.x, 0, toGlac.z).normalize();
+                if (flatGlac.dot(fwd) > 0.3) {
+                    aimY = toGlac.y / toGlac.length() + 0.05;
+                }
+            }
+            const dir = new THREE.Vector3(fwd.x, aimY, fwd.z).normalize();
+
+            scene.add(mesh);
+            snowballList.push({ mesh, vel: dir.multiplyScalar(30), pos: startPos.clone(), age: 0 });
+        }
+
+        // ═══════════════════════════════════════════════════════════
         // IGNAROTH — THE FLAME KING
         // ═══════════════════════════════════════════════════════════
         const DRAGON_MAX_HP = 5;
@@ -1347,6 +1408,7 @@
                 swing.timer = 0;
                 swing.hitRegistered = false;
             }
+            if (e.code === 'KeyG' && snowball.pickedUp && !victory.active && !ps.dead) throwSnowball();
             // CHECKPOINT RESPAWN: Press R when dead
             if (e.code === 'KeyR' && ps.dead && checkpoint) {
                 respawnFromCheckpoint();
@@ -1758,6 +1820,52 @@
                     handSword.visible = true;
                     swordHudEl.style.display = 'block';
                     pickupHintEl.style.display = 'none';
+                }
+            }
+
+            // ── Snowball pickup (level 2 only) ──
+            if (currentLevel === 2 && !snowball.pickedUp) {
+                groundSnowball.rotation.y = groundSwordSpinTime * 0.9;
+                groundSnowball.position.y = SNOWBALL_PICKUP_POS.y + Math.sin(groundSwordSpinTime * 1.8 + 1) * 0.12;
+
+                const sbx = ps.pos.x - SNOWBALL_PICKUP_POS.x, sbz = ps.pos.z - SNOWBALL_PICKUP_POS.z;
+                const distToSnowball = Math.sqrt(sbx*sbx + sbz*sbz);
+                snowballPickupHintEl.style.display = distToSnowball < 6 ? 'block' : 'none';
+
+                if (distToSnowball < 2.5) {
+                    snowball.pickedUp = true;
+                    scene.remove(groundSnowball);
+                    snowballHudEl.style.display = 'block';
+                    snowballPickupHintEl.style.display = 'none';
+                }
+            }
+
+            // ── Snowball cooldown ──
+            if (snowball.cooldown > 0) snowball.cooldown -= dt;
+
+            // ── Snowball projectile update ──
+            for (let si = snowballList.length - 1; si >= 0; si--) {
+                const sb = snowballList[si];
+                sb.age += dt;
+                sb.pos.x += sb.vel.x * dt;
+                sb.pos.y += sb.vel.y * dt - 2.0 * dt * dt;
+                sb.pos.z += sb.vel.z * dt;
+                sb.mesh.position.copy(sb.pos);
+                sb.mesh.rotation.x += dt * 6;
+                sb.mesh.rotation.z += dt * 4;
+
+                // Hit Glacius
+                if (glacius.alive && sb.pos.distanceTo(glacius.pos) < 7) {
+                    hitGlacius();
+                    scene.remove(sb.mesh);
+                    snowballList.splice(si, 1);
+                    continue;
+                }
+
+                // Remove if too old or hit ground
+                if (sb.age > 3 || sb.pos.y < getTerrainHeight(sb.pos.x, sb.pos.z)) {
+                    scene.remove(sb.mesh);
+                    snowballList.splice(si, 1);
                 }
             }
 
@@ -2378,6 +2486,9 @@
             polarBearList.forEach(b => { b.mesh.visible = true; });
             sheepList.forEach(s => { s.mesh.visible = false; });
             kangarooList.forEach(k => { k.mesh.visible = false; });
+
+            // Show snowball pickup
+            if (!snowball.pickedUp) groundSnowball.visible = true;
 
             const startX = GLAC_X - 28, startZ = GLAC_Z;
             ps.pos.set(startX, getTerrainHeight(startX, startZ), startZ);
