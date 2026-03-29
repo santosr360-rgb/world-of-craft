@@ -158,6 +158,7 @@
   <div id="bow-pickup-hint" style="display:none; position:fixed; bottom:130px; left:50%; transform:translateX(-50%); font-family:'Cinzel',serif; font-size:0.75rem; letter-spacing:2px; color:#fff; text-shadow:0 0 8px #00ccff; background:rgba(0,0,0,0.5); padding:6px 16px; border:1px solid #0088aa; pointer-events:none; z-index:200;">🏹 Walk closer to pick up the Shadow Bow!</div>
   <div id="bow-hud" style="display:none; position:fixed; bottom:80px; left:20px; font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:2px; color:#55ddff; text-shadow:0 0 10px #0099cc; pointer-events:none; z-index:200; background:rgba(0,0,0,0.45); padding:6px 14px; border:1px solid #006688;">🏹 SHADOW BOW — <span id="arrow-count">10</span> ARROWS</div>
   <div id="victory-msg">VEXMOR DEFEATED!<span class="sub">The Shadow Labyrinth is purified.</span></div>
+  <div id="level-transition" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-family:'Cinzel',serif; font-size:clamp(1rem,3vw,2rem); letter-spacing:4px; color:#7acc5a; text-shadow:0 0 30px #4caf50, 0 0 60px #2a8a20; text-align:center; pointer-events:none; z-index:400; animation:victoryPulse 1s ease-in-out infinite alternate;"></div>
   <div id="death-msg">YOU HAVE FALLEN<span class="sub">Press R to respawn</span></div>
   <div id="hit-flash"></div>
   <div id="vignette"></div>
@@ -902,6 +903,8 @@ function damagePlayer() {
 // ═══════════════════════════════════════════════════════════
 //  GAME LOOP
 // ═══════════════════════════════════════════════════════════
+const victory = { active: false, timer: 0 };
+let level4StartedFlag = false;
 let prevTime = performance.now();
 let groundSwordSpinTime = 0;
 
@@ -1427,6 +1430,30 @@ function animate() {
     }
   }
 
+  // ────────────────────────────────────────────────────────
+  //  VICTORY — transition to World 4
+  // ────────────────────────────────────────────────────────
+  if (victory.active) {
+    victory.timer += dt;
+    if (victory.timer > 4.5 && victory.timer < 7.0) {
+      const lt = document.getElementById('level-transition');
+      lt.style.display = 'block';
+      lt.textContent = '';
+      lt.appendChild(document.createTextNode('THE SHADOWS GIVE WAY TO STONE...'));
+      const sub = document.createElement('span');
+      sub.style.display = 'block';
+      sub.style.fontSize = '0.5em';
+      sub.style.marginTop = '10px';
+      sub.style.letterSpacing = '3px';
+      sub.textContent = '\u26F0 THE EARTH TREMBLES \u26F0';
+      lt.appendChild(sub);
+    }
+    if (victory.timer >= 7.0 && !level4StartedFlag) {
+      level4StartedFlag = true;
+      window.location.href = 'world4.html';
+    }
+  }
+
   renderer.render(scene, camera);
 }
 
@@ -1449,6 +1476,8 @@ function hitDragon() {
     document.getElementById('dragon-hud').style.display = 'none';
     dragon.shadowBolts.forEach(b => scene.remove(b.mesh));
     dragon.shadowBolts = [];
+    victory.active = true;
+    victory.timer = 0;
   }
 }
 
