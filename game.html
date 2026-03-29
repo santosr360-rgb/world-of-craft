@@ -1257,7 +1257,7 @@
         // ═══════════════════════════════════════════════════════════
         // SNOWBALL WEAPON (level 2 ranged weapon)
         // ═══════════════════════════════════════════════════════════
-        const SNOWBALL_PICKUP_POS = new THREE.Vector3(GLAC_X - 30, 0, GLAC_Z + 8);
+        const SNOWBALL_PICKUP_POS = new THREE.Vector3(GLAC_X - 14, 0, GLAC_Z + 6);
         SNOWBALL_PICKUP_POS.y = getTerrainHeight(SNOWBALL_PICKUP_POS.x, SNOWBALL_PICKUP_POS.z) + 0.6;
 
         // Ground snowball pile
@@ -2499,6 +2499,7 @@
             ps.velY = 0;
             ps.onGround = true;
             ps.angle = 0;
+            ps.maxHp = 5;
             ps.hp = ps.maxHp;
             ps.invincible = 2;
             updatePlayerHp();
