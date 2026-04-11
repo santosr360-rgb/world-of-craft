@@ -562,6 +562,7 @@
 
             // Restore score
             score = checkpoint.score;
+            try { sessionStorage.setItem('worldOfCraftScore', score); } catch (e) {}
             scoreEl.textContent = 'SCORE: ' + score;
 
             if (checkpoint.level === 1) {
@@ -1444,9 +1445,11 @@
         const dragonHudEl = document.getElementById('dragon-hud');
         const scoreEl = document.getElementById('score-hud');
 
-        let score = 0;
+        let score = parseInt(sessionStorage.getItem('worldOfCraftScore') || '0', 10);
+        scoreEl.textContent = 'SCORE: ' + score;
         function addScore(n) {
             score += n;
+            try { sessionStorage.setItem('worldOfCraftScore', score); } catch (e) {}
             scoreEl.textContent = 'SCORE: ' + score;
         }
 
@@ -2447,7 +2450,7 @@
                 glacius.exploding = true;
                 glacius.dashActive = false;
                 spawnGlaciusExplosion();
-                addScore(15);
+                addScore(10);
                 document.getElementById('glacius-victory-msg').style.display = 'block';
                 document.getElementById('glacius-hud').style.display = 'none';
                 victoryMsgEl.style.display = 'none';

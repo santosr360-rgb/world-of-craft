@@ -486,14 +486,16 @@
           <span class="dragon-icon">🐉</span>
           <div class="dragon-name">Stormclaw — Thunder Drake</div>
           <p class="dragon-desc">Soars above the storm clouds, hurling lightning bolts. His wingspan darkens entire biomes when he passes overhead.</p>
-          <div class="dragon-status locked">Locked — Defeat 4 dragons first</div>
+          <div class="dragon-status unlocked">Available — Stormclaw's Sky</div>
+          <a href="world5.html" class="dragon-play">&#9889; Enter World 5</a>
         </div>
 
         <div class="dragon-card" style="--dragon-color:#e91e63;">
           <span class="dragon-icon">🐲</span>
           <div class="dragon-name">Dreadmaw — The World Ender</div>
           <p class="dragon-desc">The final boss. Ancient beyond memory, sealed by the old gods. Defeat him and the realm is saved forever.</p>
-          <div class="dragon-status locked">Locked — Defeat all 5 dragons first</div>
+          <div class="dragon-status unlocked">Available — The Cursed Abyss</div>
+          <a href="world6.html" class="dragon-play">&#9760; Enter World 6</a>
         </div>
 
       </div>
@@ -538,6 +540,9 @@
   </div>
 
   <script>
+    /* ── RESET RUN-WIDE SCORE ── */
+    try { sessionStorage.removeItem('worldOfCraftScore'); } catch (e) {}
+
     /* ── BUILD CUBE TERRAIN ── */
     const bg = document.getElementById('cubeBg');
     const cubeTypes = ['dirt', 'stone', 'dirt', 'dirt', 'stone', 'lava', 'dirt'];

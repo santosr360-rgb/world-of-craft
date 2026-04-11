@@ -593,10 +593,12 @@ function shootArrow() {
 // ═══════════════════════════════════════════════════════════
 //  SCORE SYSTEM
 // ═══════════════════════════════════════════════════════════
-let score = 0;
+let score = parseInt(sessionStorage.getItem('worldOfCraftScore') || '0', 10);
 const scoreEl = document.getElementById('score-hud');
+scoreEl.textContent = 'SCORE: ' + score;
 function addScore(n) {
   score += n;
+  try { sessionStorage.setItem('worldOfCraftScore', score); } catch (e) {}
   scoreEl.textContent = 'SCORE: ' + score;
 }
 
@@ -1471,7 +1473,7 @@ function hitDragon() {
     dragon.mesh.visible = false;
     dragon.exploding = true;
     spawnExplosion();
-    addScore(15);
+    addScore(10);
     victoryMsgEl.style.display = 'block';
     document.getElementById('dragon-hud').style.display = 'none';
     dragon.shadowBolts.forEach(b => scene.remove(b.mesh));

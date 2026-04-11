@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self';">
+  <title>World of Craft — Dreadmaw, The World Ender</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050008; }
+    canvas { display: block; position: relative; z-index: 0; }
+
+    #back-btn {
+      position: fixed; top: 14px; left: 14px;
+      padding: 8px 18px;
+      background: rgba(0,0,0,0.55); color: #ff66cc;
+      border: 1px solid #cc2288;
+      font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 2px;
+      cursor: pointer; text-decoration: none; pointer-events: all;
+      transition: background 0.2s; z-index: 200;
+    }
+    #back-btn:hover { background: rgba(204,34,136,0.18); }
+
+    #game-title {
+      position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+      font-family: 'Cinzel Decorative', serif; font-size: 1.2rem; letter-spacing: 5px;
+      color: #ff66cc; text-shadow: 0 0 14px #cc2288, 0 0 28px #660044; pointer-events: none; z-index: 200;
+    }
+
+    #dragon-hud {
+      position: fixed; top: 55px; left: 50%; transform: translateX(-50%);
+      text-align: center; pointer-events: none; z-index: 200;
+    }
+    #dragon-label {
+      font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 3px;
+      color: #ff66cc; text-shadow: 0 0 12px #cc2288; margin-bottom: 4px;
+    }
+    #hp-bar {
+      width: 280px; height: 16px;
+      background: #110018; border: 2px solid #66224a; border-radius: 2px;
+    }
+    #hp-fill {
+      height: 100%; width: 100%;
+      background: linear-gradient(90deg, #441166, #ff66cc);
+      transition: width 0.25s ease;
+    }
+
+    #player-hp {
+      position: fixed; bottom: 50px; right: 20px;
+      font-family: sans-serif; font-size: 1.8rem; letter-spacing: 6px;
+      color: #ff3366;
+      text-shadow: 0 0 14px #ff3366, 0 0 28px #cc0044, 0 0 50px #ff0066;
+      pointer-events: none; z-index: 200;
+    }
+
+    #score-hud {
+      position: fixed; top: 18px; right: 20px;
+      font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 3px;
+      color: #ff99dd;
+      text-shadow: 0 0 10px #cc2288, 0 0 20px #660044;
+      background: rgba(0,0,0,0.5); padding: 6px 14px; border: 1px solid #cc2288;
+      pointer-events: none; z-index: 200;
+    }
+
+    #sword-hud {
+      display: none;
+      position: fixed; bottom: 50px; left: 20px;
+      font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 2px;
+      color: #ff66cc; text-shadow: 0 0 10px #cc2288;
+      pointer-events: none; z-index: 200;
+      background: rgba(0,0,0,0.45); padding: 6px 14px; border: 1px solid #66224a;
+    }
+
+    #pickup-hint {
+      display: none;
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px;
+      color: #fff; text-shadow: 0 0 8px #ff66cc;
+      background: rgba(0,0,0,0.5); padding: 6px 16px; border: 1px solid #cc2288;
+      pointer-events: none; z-index: 200;
+    }
+
+    #death-msg {
+      display: none;
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-family: 'Cinzel', serif; font-size: clamp(1.5rem, 5vw, 3rem);
+      letter-spacing: 4px; color: #ff3344;
+      text-shadow: 0 0 30px #cc0000, 0 0 60px #880000;
+      text-align: center; z-index: 300;
+      animation: pulseGlow 1s ease-in-out infinite alternate;
+    }
+    #death-msg .sub {
+      display: block; font-size: 0.45em; margin-top: 14px;
+      color: #aa6666; letter-spacing: 3px;
+    }
+
+    @keyframes pulseGlow {
+      from { filter: brightness(1); }
+      to   { filter: brightness(1.5); }
+    }
+
+    #hit-flash {
+      position: fixed; inset: 0; pointer-events: none; z-index: 250;
+      background: rgba(255,80,180,0); transition: background 0.05s;
+    }
+
+    /* ── EPIC VICTORY SCREEN ── */
+    #final-victory {
+      display: none;
+      position: fixed; inset: 0; z-index: 500;
+      pointer-events: auto;
+      background: radial-gradient(circle at 50% 50%, rgba(60,0,40,0.85) 0%, rgba(0,0,0,0.95) 70%);
+      align-items: center; justify-content: center;
+      flex-direction: column;
+      animation: fadeInVictory 2s ease forwards;
+    }
+    @keyframes fadeInVictory {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    #final-victory .crown {
+      font-size: 4rem;
+      filter: drop-shadow(0 0 30px #ffd700);
+      animation: crownFloat 2s ease-in-out infinite alternate;
+      margin-bottom: 12px;
+    }
+    @keyframes crownFloat {
+      from { transform: translateY(0) scale(1); }
+      to   { transform: translateY(-12px) scale(1.08); }
+    }
+
+    #final-victory h1 {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: clamp(2.4rem, 7vw, 5.4rem);
+      letter-spacing: 6px;
+      background: linear-gradient(180deg, #fff5c0 0%, #ffd700 25%, #ff8c00 60%, #ff3c00 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(255,140,0,0.85));
+      animation: titlePulse 2s ease-in-out infinite alternate;
+      text-align: center;
+      line-height: 1.05;
+    }
+    @keyframes titlePulse {
+      from { filter: drop-shadow(0 0 22px rgba(255,140,0,0.7)); }
+      to   { filter: drop-shadow(0 0 50px rgba(255,60,0,1)); }
+    }
+
+    #final-victory .sub {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(0.9rem, 2vw, 1.4rem);
+      letter-spacing: 4px;
+      color: #ffd599;
+      text-shadow: 0 0 18px #cc6622;
+      margin-top: 18px;
+    }
+
+    #final-victory .score-line {
+      margin-top: 38px;
+      font-family: 'Cinzel', serif;
+      font-size: clamp(1.2rem, 3vw, 2rem);
+      letter-spacing: 5px;
+      color: #ffe066;
+      text-shadow: 0 0 24px #ffaa22, 0 0 48px #884400;
+    }
+
+    #final-victory .score-line span {
+      color: #fff5c0;
+      font-size: 1.4em;
+      text-shadow: 0 0 30px #ffeb3b, 0 0 60px #ff9900;
+    }
+
+    #final-victory .credits {
+      margin-top: 28px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.84rem;
+      letter-spacing: 3px;
+      color: #aa88aa;
+      max-width: 620px;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    #final-victory .play-again {
+      display: inline-block;
+      margin-top: 36px;
+      padding: 16px 42px;
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(135deg, #ff8c00, #ff3c00);
+      border: 2px solid #ffaa44;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+      box-shadow: 0 0 36px rgba(255,140,0,0.7);
+    }
+    #final-victory .play-again:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 60px rgba(255,140,0,1);
+    }
+
+    #controls-hint {
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+      font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 2px;
+      color: rgba(220,180,220,0.85); text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+      white-space: nowrap; pointer-events: none; z-index: 200;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="index.html" id="back-btn">&#8592; BACK</a>
+  <div id="game-title">DREADMAW &mdash; THE WORLD ENDER</div>
+
+  <div id="dragon-hud">
+    <div id="dragon-label">&#9760; DREADMAW &mdash; THE WORLD ENDER</div>
+    <div id="hp-bar"><div id="hp-fill"></div></div>
+  </div>
+
+  <div id="player-hp">&#9829; &#9829; &#9829; &#9829; &#9829;</div>
+  <div id="score-hud">SCORE: 0</div>
+
+  <div id="sword-hud">&#9876; VOIDBANE EQUIPPED</div>
+  <div id="pickup-hint">&#9876; Walk closer to pick up Voidbane!</div>
+  <div id="bow-pickup-hint" style="display:none; position:fixed; bottom:130px; left:50%; transform:translateX(-50%); font-family:'Cinzel',serif; font-size:0.75rem; letter-spacing:2px; color:#fff; text-shadow:0 0 8px #ff66cc; background:rgba(0,0,0,0.5); padding:6px 16px; border:1px solid #cc2288; pointer-events:none; z-index:200;">&#127993; Walk closer to pick up the Soulbow!</div>
+  <div id="bow-hud" style="display:none; position:fixed; bottom:80px; left:20px; font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:2px; color:#ff99dd; text-shadow:0 0 10px #cc2288; pointer-events:none; z-index:200; background:rgba(0,0,0,0.45); padding:6px 14px; border:1px solid #66224a;">&#127993; SOULBOW &mdash; <span id="arrow-count">15</span> SHAFTS</div>
+  <div id="death-msg">YOU HAVE FALLEN<span class="sub">Press R to respawn</span></div>
+  <div id="hit-flash"></div>
+  <div id="controls-hint">&uarr;&darr; Move &nbsp;&middot;&nbsp; &larr;&rarr; Turn &nbsp;&middot;&nbsp; SPACE Jump &nbsp;&middot;&nbsp; F Attack &nbsp;&middot;&nbsp; G Shoot</div>
+
+  <div id="final-victory">
+    <div class="crown">&#x1F451;</div>
+    <h1>THE REALM IS SAVED</h1>
+    <div class="sub">All six dragons have fallen. The ancient seal is whole again.</div>
+    <div class="score-line">FINAL SCORE: <span id="final-score">0</span></div>
+    <div class="credits">
+      You journeyed through ember, frost, shadow, stone, storm, and void.<br>
+      You crafted, you fought, you endured. The skies are yours, hero.
+    </div>
+    <a href="index.html" class="play-again">&#9876; Return Home</a>
+  </div>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
+<script>'use strict';
+
+// ═══════════════════════════════════════════════════════════
+//  RENDERER + SCENE + CAMERA
+// ═══════════════════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const SKY = 0x0a0418;
+scene.background = new THREE.Color(SKY);
+scene.fog = new THREE.FogExp2(0x110522, 0.006);
+
+const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 500);
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════
+//  LIGHTING — cursed void light
+// ═══════════════════════════════════════════════════════════
+scene.add(new THREE.AmbientLight(0x44224a, 0.7));
+
+const sunLight = new THREE.DirectionalLight(0xcc88dd, 1.0);
+sunLight.position.set(40, 80, 30);
+sunLight.castShadow = true;
+Object.assign(sunLight.shadow.camera, { left:-130, right:130, top:130, bottom:-130, far:350 });
+sunLight.shadow.mapSize.set(2048, 2048);
+scene.add(sunLight);
+
+const voidLight1 = new THREE.PointLight(0xcc2288, 2.0, 70);
+voidLight1.position.set(42, 14, 25);
+scene.add(voidLight1);
+
+const voidLight2 = new THREE.PointLight(0x6622aa, 1.4, 50);
+voidLight2.position.set(0, 12, 0);
+scene.add(voidLight2);
+
+// ═══════════════════════════════════════════════════════════
+//  TERRAIN — cracked obsidian arena
+// ═══════════════════════════════════════════════════════════
+function getTerrainHeight(x, z) {
+  const bowl = -3 * Math.exp(-(x*x + z*z)/(50*50));
+  const ridge1 = 12 * Math.exp(-((x-32)*(x-32) + (z-22)*(z-22)) / (16*16));
+  const ridge2 = 11 * Math.exp(-((x+30)*(x+30) + (z+18)*(z+18)) / (18*18));
+  const ridge3 = 10 * Math.exp(-((x+22)*(x+22) + (z-30)*(z-30)) / (14*14));
+  const ridge4 = 13 * Math.exp(-((x-26)*(x-26) + (z+26)*(z+26)) / (15*15));
+  const roll = 1.4 * Math.sin(x * 0.06) * Math.cos(z * 0.07);
+  const cracks = 0.6 * Math.sin(x * 0.4) * Math.cos(z * 0.35);
+  return bowl + ridge1 + ridge2 + ridge3 + ridge4 + roll + cracks;
+}
+
+function getTerrainNormal(x, z) {
+  const d = 0.5;
+  const hL = getTerrainHeight(x - d, z), hR = getTerrainHeight(x + d, z);
+  const hF = getTerrainHeight(x, z - d), hB = getTerrainHeight(x, z + d);
+  return new THREE.Vector3(hL - hR, 2 * d, hF - hB).normalize();
+}
+
+const tGeo = new THREE.PlaneGeometry(260, 260, 120, 120);
+tGeo.rotateX(-Math.PI / 2);
+const tPos = tGeo.attributes.position;
+for (let i = 0; i < tPos.count; i++) {
+  tPos.setY(i, getTerrainHeight(tPos.getX(i), tPos.getZ(i)));
+}
+tGeo.computeVertexNormals();
+const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x1a0a22, emissive: 0x110416, emissiveIntensity: 0.4 }));
+terrain.receiveShadow = true;
+scene.add(terrain);
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+function mkBox(w, h, d, color, px, py, pz) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshLambertMaterial({ color, emissive: 0x110218, emissiveIntensity: 0.18 })
+  );
+  if (px !== undefined) m.position.set(px, py, pz);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
+function mkGlowBox(w, h, d, color, emissive, px, py, pz) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshLambertMaterial({ color, emissive, emissiveIntensity: 1.1 })
+  );
+  if (px !== undefined) m.position.set(px, py, pz);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
+const _worldUp   = new THREE.Vector3(0, 1, 0);
+const _slopeQ    = new THREE.Quaternion();
+const _faceQ     = new THREE.Quaternion();
+const _yAxis     = new THREE.Vector3(0, 1, 0);
+const _eu        = new THREE.Euler();
+const _fwd       = new THREE.Vector3();
+const _cOff      = new THREE.Vector3();
+const _cTgt      = new THREE.Vector3();
+const _toDragon  = new THREE.Vector3();
+const _gFwd      = new THREE.Vector3();
+
+// ═══════════════════════════════════════════════════════════
+//  GEORGE
+// ═══════════════════════════════════════════════════════════
+const SKIN = 0xf5c98c, SHIRT = 0x2244cc, PANTS = 0x1a2a44, HAIR_C = 0x3a2010;
+const georgeRoot = new THREE.Group();
+scene.add(georgeRoot);
+
+georgeRoot.add(mkBox(0.78, 1.05, 0.42, SHIRT, 0, 1.275, 0));
+
+const headPivot = new THREE.Group();
+headPivot.position.set(0, 1.8, 0);
+headPivot.add(
+  mkBox(0.65, 0.65, 0.65, SKIN,    0,    0.325, 0),
+  mkBox(0.68, 0.22, 0.68, HAIR_C,  0,    0.76,  0),
+  mkBox(0.13, 0.11, 0.06, 0x1a1a55, -0.15, 0.31, -0.335),
+  mkBox(0.13, 0.11, 0.06, 0x1a1a55,  0.15, 0.31, -0.335)
+);
+georgeRoot.add(headPivot);
+
+const legLP = new THREE.Group(); legLP.position.set(-0.19, 0.75, 0);
+legLP.add(mkBox(0.29, 0.75, 0.29, PANTS, 0, -0.375, 0)); georgeRoot.add(legLP);
+
+const legRP = new THREE.Group(); legRP.position.set(0.19, 0.75, 0);
+legRP.add(mkBox(0.29, 0.75, 0.29, PANTS, 0, -0.375, 0)); georgeRoot.add(legRP);
+
+const armLP = new THREE.Group(); armLP.position.set(-0.51, 1.73, 0);
+armLP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0)); georgeRoot.add(armLP);
+
+const armRP = new THREE.Group(); armRP.position.set(0.51, 1.73, 0);
+armRP.add(mkBox(0.26, 0.85, 0.26, SHIRT, 0, -0.425, 0)); georgeRoot.add(armRP);
+
+const playerGlow = new THREE.PointLight(0xff66cc, 1.5, 18);
+playerGlow.position.set(0, 3, 0);
+georgeRoot.add(playerGlow);
+
+const BOUNDARY = 110;
+const ps = {
+  pos: new THREE.Vector3(0, getTerrainHeight(0, 0), 0),
+  velY: 0, angle: 0, onGround: true, walkCycle: 0, moving: false,
+  hp: 5, maxHp: 5, alive: true, invincible: 0
+};
+const MOVE_SPEED = 5.5, ROTATE_SPEED = 2.2, JUMP_VEL = 9.5, GRAVITY = 24;
+
+// ═══════════════════════════════════════════════════════════
+//  ANCIENT SEAL RUNES (decorative on the ground)
+// ═══════════════════════════════════════════════════════════
+function placeRune(x, z) {
+  const y = getTerrainHeight(x, z);
+  const r = mkGlowBox(1.4, 0.06, 1.4, 0xff66cc, 0xcc2288, x, y + 0.05, z);
+  r.material.transparent = true;
+  r.material.opacity = 0.55;
+  r.rotation.y = Math.random() * Math.PI;
+  scene.add(r);
+}
+[[-30,0],[30,0],[0,-30],[0,30],[-22,-22],[22,22],[-22,22],[22,-22],
+ [-12,-12],[12,12],[-12,12],[12,-12],[-40,8],[40,-8]
+].forEach(([x,z]) => placeRune(x,z));
+
+// ═══════════════════════════════════════════════════════════
+//  OBSIDIAN PILLARS
+// ═══════════════════════════════════════════════════════════
+function placePillar(x, z) {
+  const y = getTerrainHeight(x, z);
+  const h1 = 4 + Math.random() * 3;
+  scene.add(mkBox(1.6, h1, 1.6, 0x1a0a28, x, y + h1/2, z));
+  scene.add(mkBox(1.2, h1*0.7, 1.2, 0x2a1238, x, y + h1*0.85, z));
+  scene.add(mkGlowBox(0.32, 0.32, 0.32, 0xff66cc, 0xcc2288, x, y + h1 + 0.16, z));
+}
+[[-22,16],[18,-22],[-30,-12],[28,8],[-14,30],[24,28],
+ [-38,-18],[42,-12],[-10,-36],[36,-30],[-44,12],[14,38],
+ [-32,32],[44,22],[-46,-2],[8,-42]
+].forEach(([x,z]) => placePillar(x,z));
+
+// ═══════════════════════════════════════════════════════════
+//  VOID PUDDLES (glowing puddles on the ground)
+// ═══════════════════════════════════════════════════════════
+const voidPuddles = [];
+function placeVoidPuddle(x, z) {
+  const y = getTerrainHeight(x, z);
+  const p = mkGlowBox(2.2, 0.1, 2.2, 0x6622aa, 0x9944cc, x, y + 0.06, z);
+  p.material.transparent = true;
+  p.material.opacity = 0.55;
+  scene.add(p);
+  voidPuddles.push(p);
+}
+[[-6,8],[12,-4],[-18,18],[10,16],[-26,-10],[20,-12],[-32,4],[26,16],
+ [0,-22],[-12,-30],[18,32],[-22,36],[36,-4],[-40,-22],[6,-32],[28,-26]
+].forEach(([x,z]) => placeVoidPuddle(x,z));
+
+// ═══════════════════════════════════════════════════════════
+//  VOID PARTICLES — ambient floating motes
+// ═══════════════════════════════════════════════════════════
+const voidMotes = [];
+for (let i = 0; i < 32; i++) {
+  const s = 0.12 + Math.random() * 0.18;
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(s, s, s),
+    new THREE.MeshLambertMaterial({ color: 0xff66cc, emissive: 0xcc2288, emissiveIntensity: 0.9, transparent: true, opacity: 0.6 })
+  );
+  const mx = (Math.random() - 0.5) * 180;
+  const mz = (Math.random() - 0.5) * 180;
+  const my = getTerrainHeight(mx, mz) + 1 + Math.random() * 8;
+  m.position.set(mx, my, mz);
+  scene.add(m);
+  voidMotes.push({ mesh: m, baseY: my, speed: 0.5 + Math.random() * 1.5, phase: Math.random() * Math.PI * 2 });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WRAITHS (small floating, 1 point)
+// ═══════════════════════════════════════════════════════════
+const wraithList = [];
+function createWraith(wx, wz) {
+  const root = new THREE.Group();
+  // Hooded body
+  root.add(mkGlowBox(0.55, 0.85, 0.4, 0x220a2a, 0x110416, 0, 0.4, 0));
+  // Glowing eye slits
+  root.add(mkGlowBox(0.18, 0.05, 0.04, 0xff66cc, 0xcc2288, 0, 0.55, -0.22));
+  // Trailing spectral tail
+  root.add(mkGlowBox(0.32, 0.18, 0.18, 0x4a2266, 0x220a44, 0, -0.05, 0.1));
+  root.add(mkGlowBox(0.22, 0.14, 0.14, 0x6a3a88, 0x220a44, 0, -0.18, 0.22));
+
+  const wy = getTerrainHeight(wx, wz) + 2 + Math.random() * 3;
+  root.position.set(wx, wy, wz);
+  scene.add(root);
+  return {
+    mesh: root, pos: new THREE.Vector3(wx, wy, wz),
+    angle: Math.random() * Math.PI * 2,
+    speed: 1.4 + Math.random() * 0.9,
+    bobPhase: Math.random() * Math.PI * 2,
+    baseY: wy, alive: true
+  };
+}
+[[10,4],[-8,12],[14,-14],[-18,8],[6,20],[-12,-20],[22,16],
+ [-26,12],[16,-28],[-6,-28],[28,-6],[-32,-10],[8,32],[-16,26],
+ [20,22],[-22,-18]
+].forEach(([x,z]) => wraithList.push(createWraith(x,z)));
+
+// ═══════════════════════════════════════════════════════════
+//  SHADE BATS (flying, 3 points)
+// ═══════════════════════════════════════════════════════════
+const batList = [];
+function createBat(bx, bz) {
+  const root = new THREE.Group();
+  root.add(mkGlowBox(0.45, 0.4, 0.7, 0x2a0a3a, 0x110416, 0, 0, 0));
+  root.add(mkGlowBox(0.22, 0.22, 0.28, 0x3a1248, 0x220a44, 0, 0.08, -0.5));
+  root.add(mkGlowBox(0.05, 0.04, 0.04, 0xff66cc, 0xcc2288, -0.07, 0.1, -0.6));
+  root.add(mkGlowBox(0.05, 0.04, 0.04, 0xff66cc, 0xcc2288, 0.07, 0.1, -0.6));
+  // Tall ears
+  root.add(mkGlowBox(0.05, 0.18, 0.05, 0x3a1248, 0x220a44, -0.1, 0.28, -0.45));
+  root.add(mkGlowBox(0.05, 0.18, 0.05, 0x3a1248, 0x220a44, 0.1, 0.28, -0.45));
+  // Wings
+  const wingL = new THREE.Group(); wingL.position.set(-0.22, 0.05, 0);
+  wingL.add(mkGlowBox(1.2, 0.06, 0.55, 0x4a1a66, 0x220a44, -0.6, 0, 0));
+  wingL.add(mkGlowBox(0.6, 0.05, 0.4, 0x6a2288, 0x220a44, -1.3, 0.05, 0.1));
+  root.add(wingL);
+  const wingR = new THREE.Group(); wingR.position.set(0.22, 0.05, 0);
+  wingR.add(mkGlowBox(1.2, 0.06, 0.55, 0x4a1a66, 0x220a44, 0.6, 0, 0));
+  wingR.add(mkGlowBox(0.6, 0.05, 0.4, 0x6a2288, 0x220a44, 1.3, 0.05, 0.1));
+  root.add(wingR);
+
+  const by = getTerrainHeight(bx, bz) + 5 + Math.random() * 5;
+  root.position.set(bx, by, bz);
+  scene.add(root);
+  return {
+    mesh: root, wingL, wingR,
+    pos: new THREE.Vector3(bx, by, bz),
+    angle: Math.random() * Math.PI * 2,
+    speed: 3 + Math.random() * 3,
+    flapPhase: Math.random() * Math.PI * 2,
+    circleRadius: 8 + Math.random() * 12,
+    centerX: bx, centerZ: bz,
+    baseY: by, alive: true
+  };
+}
+[[0,0],[20,10],[-15,20],[10,-25],[-30,-5],[25,-18],[-20,30],[35,15],
+ [5,-8],[-10,12],[14,6],[-22,-18],[30,25],[-36,8]
+].forEach(([x,z]) => batList.push(createBat(x,z)));
+
+// Kill effects
+const killParticles = [];
+const _killGeo = new THREE.BoxGeometry(1, 1, 1);
+function spawnKillEffect(pos, colors) {
+  for (let i = 0; i < 6; i++) {
+    const s = 0.15 + Math.random() * 0.3;
+    const mat = new THREE.MeshLambertMaterial({ color: colors[Math.floor(Math.random()*colors.length)], emissive: colors[0], emissiveIntensity: 1.0 });
+    const p = new THREE.Mesh(_killGeo, mat);
+    p.scale.setScalar(s);
+    p.position.copy(pos);
+    p.castShadow = false; p.receiveShadow = false;
+    const vel = new THREE.Vector3(
+      (Math.random()-0.5)*6, 2+Math.random()*5, (Math.random()-0.5)*6
+    );
+    scene.add(p);
+    killParticles.push({ mesh:p, vel, age:0 });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VOIDBANE (melee weapon)
+// ═══════════════════════════════════════════════════════════
+const SWORD_POS = new THREE.Vector3(8, 0, -12);
+SWORD_POS.y = getTerrainHeight(SWORD_POS.x, SWORD_POS.z) + 0.6;
+
+const groundSword = new THREE.Group();
+groundSword.add(mkBox(0.1, 1.4, 0.1, 0x1a0a22, 0, 0, 0));
+groundSword.add(mkGlowBox(0.18, 0.95, 0.07, 0xff99dd, 0xcc2288, 0, 0.85, 0));
+groundSword.add(mkGlowBox(0.55, 0.12, 0.18, 0xcc2288, 0x660044, 0, 0.18, 0));
+const swGlow = mkGlowBox(0.6, 0.6, 0.6, 0xff66cc, 0xcc2288, 0, 0.5, 0);
+swGlow.material.transparent = true; swGlow.material.opacity = 0.25;
+groundSword.add(swGlow);
+
+groundSword.position.copy(SWORD_POS);
+groundSword.rotation.z = Math.PI / 2;
+scene.add(groundSword);
+
+const handSword = new THREE.Group();
+handSword.add(mkBox(0.08, 0.45, 0.08, 0x1a0a22, 0, -0.3, 0));
+handSword.add(mkGlowBox(0.16, 0.9, 0.06, 0xff99dd, 0xcc2288, 0, -1.0, 0));
+handSword.add(mkGlowBox(0.46, 0.1, 0.16, 0xcc2288, 0x660044, 0, -0.5, 0));
+handSword.position.set(0.05, -0.5, -0.1);
+handSword.rotation.x = -0.2;
+handSword.visible = false;
+armRP.add(handSword);
+
+const sword = { pickedUp: false };
+const swing = { active:false, timer:0, duration:0.45, hitRegistered:false, cooldown:0, creatureHits:[] };
+
+// ═══════════════════════════════════════════════════════════
+//  SOULBOW (ranged weapon)
+// ═══════════════════════════════════════════════════════════
+const BOW_POS = new THREE.Vector3(-14, 0, 16);
+BOW_POS.y = getTerrainHeight(BOW_POS.x, BOW_POS.z) + 0.6;
+
+const groundBow = new THREE.Group();
+groundBow.add(mkBox(0.08, 0.08, 1.0, 0x1a0a22, 0, 0, 0));
+groundBow.add(mkGlowBox(0.5, 0.06, 0.06, 0xff66cc, 0xcc2288, -0.25, 0, -0.45));
+groundBow.add(mkGlowBox(0.5, 0.06, 0.06, 0xff66cc, 0xcc2288, 0.25, 0, -0.45));
+groundBow.add(mkBox(0.02, 0.02, 0.7, 0xff99dd, 0, 0, -0.1));
+const bGlow = mkGlowBox(0.5, 0.5, 0.5, 0xff66cc, 0xcc2288, 0, 0, 0);
+bGlow.material.transparent = true; bGlow.material.opacity = 0.22;
+groundBow.add(bGlow);
+
+groundBow.position.copy(BOW_POS);
+groundBow.rotation.z = Math.PI / 4;
+scene.add(groundBow);
+
+const handBow = new THREE.Group();
+handBow.add(mkBox(0.06, 0.06, 0.8, 0x1a0a22, 0, 0, 0));
+handBow.add(mkGlowBox(0.4, 0.05, 0.05, 0xff66cc, 0xcc2288, 0, 0, -0.35));
+handBow.add(mkBox(0.02, 0.02, 0.5, 0xff99dd, 0, 0, -0.05));
+handBow.position.set(0, -0.5, -0.15);
+handBow.visible = false;
+armLP.add(handBow);
+
+const bow = { pickedUp: false, arrows: 15, maxArrows: 15, cooldown: 0 };
+const arrowList = [];
+const _arrowGeo = new THREE.BoxGeometry(1, 1, 1);
+
+const bowPickupHintEl = document.getElementById('bow-pickup-hint');
+const bowHudEl = document.getElementById('bow-hud');
+const arrowCountEl = document.getElementById('arrow-count');
+
+function shootArrow() {
+  if (bow.arrows <= 0 || bow.cooldown > 0) return;
+  bow.arrows--;
+  bow.cooldown = 0.4;
+  arrowCountEl.textContent = bow.arrows;
+
+  const arrow = new THREE.Group();
+  const shaft = new THREE.Mesh(_arrowGeo, new THREE.MeshLambertMaterial({ color: 0xff99dd, emissive: 0xcc2288, emissiveIntensity: 1.0 }));
+  shaft.scale.set(0.04, 0.04, 0.8);
+  arrow.add(shaft);
+  const head = new THREE.Mesh(_arrowGeo, new THREE.MeshLambertMaterial({ color: 0xff66cc, emissive: 0xcc2288, emissiveIntensity: 1.5 }));
+  head.scale.set(0.08, 0.08, 0.12);
+  head.position.z = -0.45;
+  arrow.add(head);
+  const trail = new THREE.Mesh(_arrowGeo, new THREE.MeshLambertMaterial({ color: 0xff66cc, emissive: 0xcc2288, emissiveIntensity: 1.4, transparent: true, opacity: 0.45 }));
+  trail.scale.set(0.1, 0.1, 0.4);
+  trail.position.z = 0.3;
+  arrow.add(trail);
+
+  arrow.position.copy(ps.pos);
+  arrow.position.y += 1.5;
+
+  let aimY = 0.15;
+  const fwd = new THREE.Vector3(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
+  if (dragon.alive) {
+    const toDragon = new THREE.Vector3().subVectors(dragon.pos, arrow.position);
+    const flatDragon = new THREE.Vector3(toDragon.x, 0, toDragon.z).normalize();
+    if (flatDragon.dot(fwd) > 0.3) {
+      aimY = toDragon.y / toDragon.length() + 0.05;
+    }
+  }
+  const dir = new THREE.Vector3(fwd.x, aimY, fwd.z).normalize();
+  arrow.rotation.y = ps.angle;
+
+  scene.add(arrow);
+  arrowList.push({ mesh: arrow, vel: dir.multiplyScalar(42), age: 0, pos: arrow.position.clone() });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCORE SYSTEM
+// ═══════════════════════════════════════════════════════════
+let score = parseInt(sessionStorage.getItem('worldOfCraftScore') || '0', 10);
+const scoreEl = document.getElementById('score-hud');
+scoreEl.textContent = 'SCORE: ' + score;
+function addScore(n) {
+  score += n;
+  try { sessionStorage.setItem('worldOfCraftScore', score); } catch (e) {}
+  scoreEl.textContent = 'SCORE: ' + score;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DREADMAW — THE WORLD ENDER
+// ═══════════════════════════════════════════════════════════
+const DRAG_X = 42, DRAG_Z = 25;
+const DRAG_BASE_Y = getTerrainHeight(DRAG_X, DRAG_Z) + 5;
+
+function buildDragon() {
+  const root = new THREE.Group();
+
+  // ── Body (massive cursed obsidian) ──
+  root.add(mkGlowBox(4.6, 2.8, 6.0, 0x1a0a28, 0xcc2288, 0, 1.4, 0));
+  // Glowing rune cracks
+  root.add(mkGlowBox(2.0, 0.16, 2.6, 0xff66cc, 0xcc2288, 0.4, 2.85, 0.3));
+  root.add(mkGlowBox(1.4, 0.12, 1.8, 0xff66cc, 0xcc2288, -0.9, 2.85, -1.0));
+  root.add(mkGlowBox(1.0, 0.1, 1.0, 0xff99dd, 0xcc2288, 0.0, 2.85, -2.0));
+  // Underbelly
+  root.add(mkGlowBox(4.7, 0.6, 6.2, 0x2a1238, 0x660044, 0, 0.05, 0));
+
+  // ── Neck (long & menacing) ──
+  root.add(mkGlowBox(1.6, 2.4, 1.8, 0x1a0a28, 0xcc2288, 0, 3.2, -3.2));
+  root.add(mkGlowBox(1.4, 1.8, 1.4, 0x2a1238, 0xcc2288, 0, 4.6, -4.2));
+  root.add(mkGlowBox(1.2, 1.4, 1.2, 0x1a0a28, 0xcc2288, 0, 5.7, -5.0));
+
+  // ── Head (massive, horned skull) ──
+  root.add(mkGlowBox(2.8, 2.0, 3.4, 0x1a0a28, 0xcc2288, 0, 6.3, -6.4));
+  root.add(mkGlowBox(1.6, 0.95, 2.4, 0x2a1238, 0xcc2288, 0, 5.85, -8.0));
+  // Cursed maw glow (magenta)
+  root.add(mkGlowBox(1.2, 0.18, 1.8, 0xff66cc, 0xcc2288, 0, 5.55, -7.8));
+  // Teeth (bone white)
+  for (let i = -3; i <= 3; i++) {
+    root.add(mkGlowBox(0.12, 0.3, 0.12, 0xeeeeee, 0x884466, i*0.18, 5.45, -8.2));
+  }
+
+  // ── Massive horns ──
+  root.add(mkGlowBox(0.4, 2.4, 0.4, 0x2a1238, 0xcc2288, -0.85, 7.6, -6.0));
+  root.add(mkGlowBox(0.32, 1.4, 0.32, 0x1a0a28, 0xcc2288, -1.05, 8.7, -6.6));
+  root.add(mkGlowBox(0.4, 2.4, 0.4, 0x2a1238, 0xcc2288, 0.85, 7.6, -6.0));
+  root.add(mkGlowBox(0.32, 1.4, 0.32, 0x1a0a28, 0xcc2288, 1.05, 8.7, -6.6));
+  // Crown of small horns
+  for (let i = -2; i <= 2; i++) {
+    root.add(mkGlowBox(0.12, 0.45, 0.12, 0x2a1238, 0xcc2288, i*0.32, 7.4, -6.9));
+  }
+
+  // Body glow lights
+  const dragonGlow1 = new THREE.PointLight(0xcc2288, 3.4, 36);
+  dragonGlow1.position.set(0, 3, -2);
+  root.add(dragonGlow1);
+  const dragonGlow2 = new THREE.PointLight(0xff66cc, 2.0, 22);
+  dragonGlow2.position.set(0, 6, -7);
+  root.add(dragonGlow2);
+
+  // Eyes (4 of them — cursed)
+  const eyeMatL = new THREE.MeshLambertMaterial({ color: 0xff99dd, emissive: 0xff66cc, emissiveIntensity: 2.6 });
+  const eyeMatR = eyeMatL.clone();
+  const eyeL  = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.32, 0.18), eyeMatL);
+  eyeL.position.set(-0.7, 6.55, -7.6); root.add(eyeL);
+  const eyeR  = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.32, 0.18), eyeMatR);
+  eyeR.position.set(0.7, 6.55, -7.6); root.add(eyeR);
+  // Lower secondary eyes
+  const eyeL2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.14), eyeMatL);
+  eyeL2.position.set(-0.95, 6.0, -7.8); root.add(eyeL2);
+  const eyeR2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.14), eyeMatR);
+  eyeR2.position.set(0.95, 6.0, -7.8); root.add(eyeR2);
+
+  // ── Tail (massive, ends in 3 spikes) ──
+  root.add(mkGlowBox(2.0, 1.6, 2.4, 0x1a0a28, 0xcc2288, 0, 0.9, 3.0));
+  root.add(mkGlowBox(1.4, 1.2, 2.8, 0x2a1238, 0xcc2288, 0, 0.6, 5.6));
+  root.add(mkGlowBox(0.9, 0.8, 2.6, 0x1a0a28, 0xcc2288, 0, 0.4, 8.4));
+  root.add(mkGlowBox(0.5, 0.5, 2.0, 0x2a1238, 0xcc2288, 0, 0.3, 10.6));
+  // Three spikes at tip
+  root.add(mkGlowBox(0.3, 0.7, 0.3, 0xff66cc, 0xcc2288, 0, 0.55, 11.7));
+  root.add(mkGlowBox(0.22, 0.5, 0.22, 0xff66cc, 0xcc2288, -0.3, 0.45, 11.5));
+  root.add(mkGlowBox(0.22, 0.5, 0.22, 0xff66cc, 0xcc2288, 0.3, 0.45, 11.5));
+
+  // ── Wings (HUGE, tattered) ──
+  const wingLP = new THREE.Group(); wingLP.position.set(-2.2, 2.4, 0.6);
+  wingLP.add(mkGlowBox(4.6, 0.2, 3.2, 0x1a0a28, 0xcc2288, -2.3, 0, 0));
+  wingLP.add(mkGlowBox(3.4, 0.16, 2.6, 0x2a1238, 0xcc2288, -5.6, 0.1, 0.4));
+  wingLP.add(mkGlowBox(2.0, 0.14, 1.8, 0x4a1a66, 0xcc2288, -8.0, 0.16, 0.6));
+  // Tattered tip
+  wingLP.add(mkGlowBox(1.0, 0.1, 1.0, 0xff66cc, 0xcc2288, -9.4, 0.2, 0.7));
+  // Glowing veins
+  wingLP.add(mkGlowBox(3.6, 0.07, 0.14, 0xff99dd, 0xcc2288, -4.0, 0.18, 0));
+  root.add(wingLP);
+
+  const wingRP = new THREE.Group(); wingRP.position.set(2.2, 2.4, 0.6);
+  wingRP.add(mkGlowBox(4.6, 0.2, 3.2, 0x1a0a28, 0xcc2288, 2.3, 0, 0));
+  wingRP.add(mkGlowBox(3.4, 0.16, 2.6, 0x2a1238, 0xcc2288, 5.6, 0.1, 0.4));
+  wingRP.add(mkGlowBox(2.0, 0.14, 1.8, 0x4a1a66, 0xcc2288, 8.0, 0.16, 0.6));
+  wingRP.add(mkGlowBox(1.0, 0.1, 1.0, 0xff66cc, 0xcc2288, 9.4, 0.2, 0.7));
+  wingRP.add(mkGlowBox(3.6, 0.07, 0.14, 0xff99dd, 0xcc2288, 4.0, 0.18, 0));
+  root.add(wingRP);
+
+  // ── Legs (4 cursed pillars) ──
+  function mkLeg(lx, lz) {
+    root.add(mkGlowBox(0.9, 1.5, 0.9, 0x1a0a28, 0xcc2288, lx, 0.2, lz));
+    root.add(mkGlowBox(0.72, 1.5, 0.72, 0x2a1238, 0xcc2288, lx*0.85, -1.25, lz+lx*0.05));
+    root.add(mkGlowBox(0.9, 0.28, 1.1, 0x1a0a28, 0xcc2288, lx*0.85, -2.1, lz-0.35));
+    // Cursed claws
+    root.add(mkGlowBox(0.18, 0.12, 0.34, 0xff66cc, 0xcc2288, lx*0.85-0.22, -2.22, lz-0.78));
+    root.add(mkGlowBox(0.18, 0.12, 0.34, 0xff66cc, 0xcc2288, lx*0.85+0.22, -2.22, lz-0.78));
+    root.add(mkGlowBox(0.18, 0.12, 0.34, 0xff66cc, 0xcc2288, lx*0.85, -2.22, lz-0.85));
+  }
+  mkLeg(-1.8, -2.2); mkLeg(1.8, -2.2);
+  mkLeg(-1.8, 2.2);  mkLeg(1.8, 2.2);
+
+  // Cursed aura
+  const auraMat = new THREE.MeshLambertMaterial({ color: 0xcc2288, emissive: 0x660044, emissiveIntensity: 0.7, transparent: true, opacity: 0.18 });
+  const aura = new THREE.Mesh(new THREE.BoxGeometry(15, 11, 17), auraMat);
+  aura.position.set(0, 2.5, 1);
+  root.add(aura);
+
+  root.position.set(DRAG_X, DRAG_BASE_Y, DRAG_Z);
+  scene.add(root);
+  return { root, wingLP, wingRP, eyeMatL, eyeMatR, aura };
+}
+
+const dragonParts = buildDragon();
+
+const dragon = {
+  mesh:      dragonParts.root,
+  wingLP:    dragonParts.wingLP,
+  wingRP:    dragonParts.wingRP,
+  aura:      dragonParts.aura,
+  pos:       new THREE.Vector3(DRAG_X, DRAG_BASE_Y, DRAG_Z),
+  angle:     Math.atan2(0 - DRAG_X, 0 - DRAG_Z) + Math.PI,
+  hp:        14,
+  maxHp:     14,
+  alive:     true,
+  hitFlash:  0,
+  exploding: false,
+  explodeParticles: [],
+  explodeAge: 0,
+  // Void blast (ranged)
+  attackTimer: 3.5,
+  attackCooldown: 2.4,
+  voidBlasts: [],
+  // Doom beam (sweeping)
+  doomTimer: 12,
+  doomBeams: [],
+  // Shadow tendrils (homing)
+  tendrilTimer: 9,
+  tendrils: [],
+  // Flying patrol
+  flyAngle: 0,
+  flySpeed: 2.2,
+  flyRadius: 16,
+  flyCenterX: DRAG_X,
+  flyCenterZ: DRAG_Z,
+  flyPatrolTimer: 0
+};
+
+let shakeTimer = 0;
+let shakeIntensity = 0;
+
+// Final victory state
+const victory = { active: false, timer: 0, beamSpawned: false, fireworks: [], lightBeam: null };
+
+function updateHpBar() {
+  document.getElementById('hp-fill').style.width = (dragon.hp / dragon.maxHp * 100) + '%';
+}
+
+const playerHpEl = document.getElementById('player-hp');
+function updatePlayerHpBar() {
+  let s = '';
+  for (let i = 0; i < ps.maxHp; i++) s += (i < ps.hp ? '\u2665' : '\u2661') + ' ';
+  playerHpEl.textContent = s;
+}
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'KeyF' && sword.pickedUp && !swing.active && swing.cooldown <= 0 && ps.alive) {
+    swing.active = true; swing.timer = 0; swing.hitRegistered = false; swing.creatureHits = [];
+  }
+  if (e.code === 'KeyG' && bow.pickedUp && ps.alive) shootArrow();
+  if (e.code === 'KeyR' && !ps.alive) respawnPlayer();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+{
+  const off = new THREE.Vector3(0, 5, 10).applyEuler(new THREE.Euler(0, ps.angle, 0));
+  camera.position.copy(ps.pos).add(off);
+  camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
+}
+
+const pickupHintEl  = document.getElementById('pickup-hint');
+const swordHudEl    = document.getElementById('sword-hud');
+const deathMsgEl    = document.getElementById('death-msg');
+const hitFlashEl    = document.getElementById('hit-flash');
+const finalVictoryEl = document.getElementById('final-victory');
+const finalScoreEl  = document.getElementById('final-score');
+
+function flashHitOverlay() {
+  hitFlashEl.style.background = 'rgba(255,80,180,0.4)';
+  setTimeout(() => { hitFlashEl.style.background = 'rgba(255,80,180,0)'; }, 120);
+}
+
+function flashPlayerHit() {
+  hitFlashEl.style.background = 'rgba(220,40,80,0.4)';
+  setTimeout(() => { hitFlashEl.style.background = 'rgba(220,40,80,0)'; }, 150);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VOID BLAST (homing-ish purple projectile)
+// ═══════════════════════════════════════════════════════════
+function spawnVoidBlast() {
+  const blast = mkGlowBox(0.8, 0.8, 0.8, 0xff66cc, 0xcc2288, 0, 0, 0);
+  blast.material.transparent = true;
+  blast.material.opacity = 0.85;
+  blast.position.copy(dragon.pos);
+  blast.position.y += 4;
+
+  const dir = new THREE.Vector3();
+  dir.subVectors(ps.pos, blast.position);
+  dir.y += 1;
+  dir.normalize();
+
+  scene.add(blast);
+  dragon.voidBlasts.push({ mesh: blast, vel: dir.multiplyScalar(18), age: 0 });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DOOM BEAM (sweeping ground beam)
+// ═══════════════════════════════════════════════════════════
+function spawnDoomBeam() {
+  // Telegraph: glowing line on ground from dragon toward player
+  const startX = dragon.pos.x;
+  const startZ = dragon.pos.z;
+  const dx = ps.pos.x - startX, dz = ps.pos.z - startZ;
+  const dist = Math.sqrt(dx*dx + dz*dz);
+  if (dist < 0.5) return;
+  const dirX = dx / dist, dirZ = dz / dist;
+  const len = Math.min(40, dist + 8);
+
+  const beam = new THREE.Group();
+  // Series of glowing segments along the beam
+  for (let s = 0; s < len; s += 1.4) {
+    const seg = mkGlowBox(1.4, 0.18, 1.4, 0xff66cc, 0xcc2288, 0, 0, 0);
+    seg.material.transparent = true;
+    seg.material.opacity = 0.7;
+    const sx = startX + dirX * (s + 1);
+    const sz = startZ + dirZ * (s + 1);
+    seg.position.set(sx, getTerrainHeight(sx, sz) + 0.1, sz);
+    beam.add(seg);
+  }
+  scene.add(beam);
+  dragon.doomBeams.push({
+    mesh: beam, age: 0, struck: false,
+    startX, startZ, dirX, dirZ, len
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SHADOW TENDRIL (slow homing follower)
+// ═══════════════════════════════════════════════════════════
+function spawnShadowTendril() {
+  const root = new THREE.Group();
+  // Body
+  root.add(mkGlowBox(0.55, 0.55, 0.55, 0x4a1a66, 0xcc2288, 0, 0.3, 0));
+  // Tail
+  root.add(mkGlowBox(0.32, 0.32, 0.32, 0x6a2288, 0xcc2288, 0, 0.18, 0.32));
+  root.add(mkGlowBox(0.22, 0.22, 0.22, 0x8a44aa, 0xcc2288, 0, 0.12, 0.55));
+  // Glowing eye
+  root.add(mkGlowBox(0.12, 0.08, 0.06, 0xff66cc, 0xcc2288, 0, 0.4, -0.28));
+
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 6 + Math.random() * 4;
+  const tx = dragon.pos.x + Math.sin(angle) * dist;
+  const tz = dragon.pos.z + Math.cos(angle) * dist;
+  const ty = getTerrainHeight(tx, tz);
+  root.position.set(tx, ty, tz);
+  scene.add(root);
+  dragon.tendrils.push({
+    mesh: root,
+    pos: new THREE.Vector3(tx, ty, tz),
+    speed: 2.3, hp: 1, alive: true
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPLOSION (massive — final boss)
+// ═══════════════════════════════════════════════════════════
+function spawnExplosion() {
+  const colors = [0xff66cc, 0xcc2288, 0xff99dd, 0xffffff, 0x6622aa, 0xff3c00, 0xffd700];
+  for (let i = 0; i < 80; i++) {
+    const s = 0.4 + Math.random() * 1.4;
+    const p = mkBox(s, s, s, colors[Math.floor(Math.random()*colors.length)]);
+    p.position.copy(dragon.pos).add(new THREE.Vector3(
+      (Math.random()-0.5)*5, Math.random()*4, (Math.random()-0.5)*5
+    ));
+    const vel = new THREE.Vector3(
+      (Math.random()-0.5)*22, 6+Math.random()*18, (Math.random()-0.5)*22
+    );
+    scene.add(p);
+    dragon.explodeParticles.push({ mesh:p, vel, age:0 });
+  }
+}
+
+function spawnVictoryFireworks() {
+  // Spawn a big fountain of upward sparks
+  const colors = [0xffd700, 0xff8c00, 0xff3c00, 0xfff5c0, 0xff66cc, 0x88ccff, 0xffeb3b];
+  for (let i = 0; i < 120; i++) {
+    const s = 0.18 + Math.random() * 0.45;
+    const p = mkBox(s, s, s, colors[Math.floor(Math.random()*colors.length)]);
+    p.position.set(
+      dragon.pos.x + (Math.random()-0.5)*8,
+      dragon.pos.y + 4 + Math.random()*3,
+      dragon.pos.z + (Math.random()-0.5)*8
+    );
+    const angle = Math.random() * Math.PI * 2;
+    const horiz = 4 + Math.random() * 14;
+    const vel = new THREE.Vector3(
+      Math.sin(angle) * horiz,
+      14 + Math.random() * 18,
+      Math.cos(angle) * horiz
+    );
+    scene.add(p);
+    victory.fireworks.push({ mesh: p, vel, age: 0 });
+  }
+}
+
+function spawnLightBeam() {
+  // Vertical pillar of light from defeated dragon to sky
+  const beam = new THREE.Group();
+  for (let i = 0; i < 22; i++) {
+    const seg = mkGlowBox(1.4 + Math.random()*0.6, 2.4, 1.4 + Math.random()*0.6, 0xfff5c0, 0xffd700, 0, 0, 0);
+    seg.material.transparent = true;
+    seg.material.opacity = 0.85;
+    seg.position.set((Math.random()-0.5)*0.4, i * 2.2 + 1, (Math.random()-0.5)*0.4);
+    beam.add(seg);
+  }
+  beam.position.set(dragon.pos.x, dragon.pos.y, dragon.pos.z);
+  scene.add(beam);
+  victory.lightBeam = beam;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DAMAGE PLAYER
+// ═══════════════════════════════════════════════════════════
+function damagePlayer() {
+  if (ps.invincible > 0 || !ps.alive) return;
+  ps.hp--;
+  ps.invincible = 1.0;
+  flashPlayerHit();
+  updatePlayerHpBar();
+  if (ps.hp <= 0) {
+    ps.alive = false;
+    deathMsgEl.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GAME LOOP
+// ═══════════════════════════════════════════════════════════
+let prevTime = performance.now();
+let groundSwordSpinTime = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt  = Math.min((now - prevTime) / 1000, 0.05);
+  prevTime  = now;
+  groundSwordSpinTime += dt;
+
+  if (ps.invincible > 0) {
+    ps.invincible -= dt;
+    georgeRoot.visible = Math.floor(ps.invincible * 10) % 2 === 0;
+  } else {
+    georgeRoot.visible = true;
+  }
+
+  // ── George movement ──
+  if (ps.alive && !victory.active) {
+    if (keys['ArrowLeft']  || keys['KeyA']) ps.angle += ROTATE_SPEED * dt;
+    if (keys['ArrowRight'] || keys['KeyD']) ps.angle -= ROTATE_SPEED * dt;
+
+    const mz = (keys['ArrowUp']   || keys['KeyW'] ? -1 : 0)
+              + (keys['ArrowDown'] || keys['KeyS'] ?  1 : 0);
+    ps.moving = mz !== 0;
+    if (ps.moving) {
+      _eu.set(0, ps.angle, 0);
+      _fwd.set(0, 0, mz).applyEuler(_eu).normalize();
+      ps.pos.x += _fwd.x * MOVE_SPEED * dt;
+      ps.pos.z += _fwd.z * MOVE_SPEED * dt;
+      ps.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.x));
+      ps.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, ps.pos.z));
+    }
+
+    if ((keys['Space'] || keys['KeyE']) && ps.onGround) {
+      ps.velY = JUMP_VEL; ps.onGround = false;
+    }
+  } else {
+    ps.moving = false;
+  }
+
+  const groundY = getTerrainHeight(ps.pos.x, ps.pos.z);
+  if (ps.onGround) {
+    ps.pos.y = groundY; ps.velY = 0;
+  } else {
+    ps.velY -= GRAVITY * dt;
+    ps.pos.y += ps.velY * dt;
+    if (ps.pos.y <= groundY) {
+      ps.pos.y = groundY; ps.velY = 0; ps.onGround = true;
+    }
+  }
+
+  georgeRoot.position.copy(ps.pos);
+  if (ps.onGround) {
+    const tn = getTerrainNormal(ps.pos.x, ps.pos.z);
+    _slopeQ.setFromUnitVectors(_worldUp, tn);
+    _faceQ.setFromAxisAngle(_yAxis, ps.angle);
+    georgeRoot.quaternion.multiplyQuaternions(_slopeQ, _faceQ);
+  } else {
+    georgeRoot.rotation.set(0, ps.angle, 0);
+  }
+
+  if (ps.moving) ps.walkCycle += dt * 7;
+  const sw = Math.sin(ps.walkCycle);
+  legLP.rotation.x =  sw * 0.55;
+  legRP.rotation.x = -sw * 0.55;
+  headPivot.rotation.x = ps.moving ? Math.sin(ps.walkCycle * 2) * 0.04 : 0;
+
+  if (!swing.active) {
+    armLP.rotation.x = -sw * 0.45;
+    armRP.rotation.x =  sw * 0.45;
+  }
+
+  // Camera — orbit defeated dragon during victory
+  if (victory.active) {
+    const cx = dragon.pos.x + Math.sin(victory.timer * 0.4) * 22;
+    const cz = dragon.pos.z + Math.cos(victory.timer * 0.4) * 22;
+    const cy = dragon.pos.y + 12 + Math.sin(victory.timer * 0.3) * 2;
+    _cTgt.set(cx, cy, cz);
+    camera.position.lerp(_cTgt, 0.04);
+    camera.lookAt(dragon.pos.x, dragon.pos.y + 4, dragon.pos.z);
+  } else {
+    _eu.set(0, ps.angle, 0);
+    _cOff.set(0, 5, 10).applyEuler(_eu);
+    _cTgt.copy(ps.pos).add(_cOff);
+    camera.position.lerp(_cTgt, 0.1);
+    camera.lookAt(ps.pos.x, ps.pos.y + 1.5, ps.pos.z);
+  }
+
+  if (shakeTimer > 0) {
+    shakeTimer -= dt;
+    const intensity = shakeIntensity * Math.max(0, shakeTimer / 1.5);
+    camera.position.x += (Math.random() - 0.5) * intensity;
+    camera.position.y += (Math.random() - 0.5) * intensity;
+  }
+
+  // ── Voidbane — pickup ──
+  if (!sword.pickedUp) {
+    groundSword.rotation.y = groundSwordSpinTime * 1.2;
+    groundSword.position.y = SWORD_POS.y + Math.sin(groundSwordSpinTime * 2) * 0.12;
+
+    const dx = ps.pos.x - SWORD_POS.x, dz = ps.pos.z - SWORD_POS.z;
+    const distToSword = Math.sqrt(dx*dx + dz*dz);
+    pickupHintEl.style.display = distToSword < 6 ? 'block' : 'none';
+
+    if (distToSword < 2.5) {
+      sword.pickedUp = true;
+      scene.remove(groundSword);
+      handSword.visible = true;
+      swordHudEl.style.display = 'block';
+      pickupHintEl.style.display = 'none';
+    }
+  }
+
+  // ── Soulbow — pickup ──
+  if (!bow.pickedUp) {
+    groundBow.rotation.y = groundSwordSpinTime * 0.9;
+    groundBow.position.y = BOW_POS.y + Math.sin(groundSwordSpinTime * 1.8 + 1) * 0.12;
+
+    const bx = ps.pos.x - BOW_POS.x, bz = ps.pos.z - BOW_POS.z;
+    const distToBow = Math.sqrt(bx*bx + bz*bz);
+    bowPickupHintEl.style.display = distToBow < 6 ? 'block' : 'none';
+
+    if (distToBow < 2.5) {
+      bow.pickedUp = true;
+      scene.remove(groundBow);
+      handBow.visible = true;
+      bowHudEl.style.display = 'block';
+      bowPickupHintEl.style.display = 'none';
+    }
+  }
+
+  if (bow.cooldown > 0) bow.cooldown -= dt;
+
+  // ── Arrow flight + hit detection ──
+  for (let ai = arrowList.length - 1; ai >= 0; ai--) {
+    const a = arrowList[ai];
+    a.age += dt;
+    a.pos.x += a.vel.x * dt;
+    a.pos.y += a.vel.y * dt - 1.0 * dt * dt;
+    a.pos.z += a.vel.z * dt;
+    a.mesh.position.copy(a.pos);
+
+    if (dragon.alive && a.pos.distanceTo(dragon.pos) < 8) {
+      hitDragon();
+      scene.remove(a.mesh);
+      arrowList.splice(ai, 1);
+      continue;
+    }
+
+    let hitCreature = false;
+    for (let wi = wraithList.length - 1; wi >= 0; wi--) {
+      const w = wraithList[wi];
+      if (!w.alive) continue;
+      if (a.pos.distanceTo(w.pos) < 1.6) {
+        w.alive = false;
+        scene.remove(w.mesh);
+        spawnKillEffect(w.pos, [0xff66cc, 0x4a2266, 0xff99dd, 0xffffff]);
+        addScore(1);
+        if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows++; arrowCountEl.textContent = bow.arrows; }
+        hitCreature = true;
+        break;
+      }
+    }
+    if (hitCreature) { scene.remove(a.mesh); arrowList.splice(ai, 1); continue; }
+
+    for (let bi = batList.length - 1; bi >= 0; bi--) {
+      const b = batList[bi];
+      if (!b.alive) continue;
+      if (a.pos.distanceTo(b.pos) < 2) {
+        b.alive = false;
+        scene.remove(b.mesh);
+        spawnKillEffect(b.pos, [0x4a1a66, 0x6a2288, 0xff66cc, 0xffffff]);
+        addScore(3);
+        if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows += 2; arrowCountEl.textContent = Math.min(bow.arrows, bow.maxArrows); }
+        hitCreature = true;
+        break;
+      }
+    }
+    if (hitCreature) { scene.remove(a.mesh); arrowList.splice(ai, 1); continue; }
+
+    // Hit shadow tendrils
+    for (let ti = dragon.tendrils.length - 1; ti >= 0; ti--) {
+      const td = dragon.tendrils[ti];
+      if (!td.alive) continue;
+      if (a.pos.distanceTo(td.pos) < 1.4) {
+        td.alive = false;
+        scene.remove(td.mesh);
+        spawnKillEffect(td.pos, [0x6a2288, 0xff66cc, 0xff99dd, 0xffffff]);
+        addScore(2);
+        if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows++; arrowCountEl.textContent = bow.arrows; }
+        dragon.tendrils.splice(ti, 1);
+        hitCreature = true;
+        break;
+      }
+    }
+    if (hitCreature) { scene.remove(a.mesh); arrowList.splice(ai, 1); continue; }
+
+    if (a.age > 3 || a.pos.y < getTerrainHeight(a.pos.x, a.pos.z)) {
+      scene.remove(a.mesh);
+      arrowList.splice(ai, 1);
+    }
+  }
+
+  // ── Sword swing ──
+  if (swing.active) {
+    swing.timer += dt;
+    const t2 = swing.timer / swing.duration;
+
+    let armAngle;
+    if      (t2 < 0.25) armAngle = -0.6 * (t2 / 0.25);
+    else if (t2 < 0.75) armAngle = -0.6 + 2.4 * ((t2 - 0.25) / 0.5);
+    else                 armAngle = 1.8 * (1 - (t2 - 0.75) / 0.25);
+    armRP.rotation.x = armAngle;
+    armLP.rotation.x = sw * 0.3;
+
+    if (t2 > 0.25 && t2 < 0.78) {
+      _gFwd.set(-Math.sin(ps.angle), 0, -Math.cos(ps.angle));
+
+      if (!swing.hitRegistered && dragon.alive) {
+        const distToDragon = ps.pos.distanceTo(dragon.pos);
+        if (distToDragon < 9) {
+          _toDragon.subVectors(dragon.pos, ps.pos); _toDragon.y = 0; _toDragon.normalize();
+          if (_toDragon.dot(_gFwd) > 0.35) {
+            hitDragon();
+            swing.hitRegistered = true;
+          }
+        }
+      }
+
+      for (let wi = wraithList.length - 1; wi >= 0; wi--) {
+        const w = wraithList[wi];
+        if (!w.alive || swing.creatureHits.includes('w'+wi)) continue;
+        const d = ps.pos.distanceTo(w.pos);
+        if (d < 5) {
+          const toW = new THREE.Vector3().subVectors(w.pos, ps.pos); toW.y = 0; toW.normalize();
+          if (toW.dot(_gFwd) > 0.35) {
+            w.alive = false;
+            scene.remove(w.mesh);
+            spawnKillEffect(w.pos, [0xff66cc, 0x4a2266, 0xff99dd, 0xffffff]);
+            addScore(1);
+            if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows++; arrowCountEl.textContent = bow.arrows; }
+            swing.creatureHits.push('w'+wi);
+          }
+        }
+      }
+
+      for (let bi = batList.length - 1; bi >= 0; bi--) {
+        const b = batList[bi];
+        if (!b.alive || swing.creatureHits.includes('b'+bi)) continue;
+        const d = ps.pos.distanceTo(b.pos);
+        if (d < 5) {
+          const toB = new THREE.Vector3().subVectors(b.pos, ps.pos); toB.y = 0; toB.normalize();
+          if (toB.dot(_gFwd) > 0.3) {
+            b.alive = false;
+            scene.remove(b.mesh);
+            spawnKillEffect(b.pos, [0x4a1a66, 0x6a2288, 0xff66cc, 0xffffff]);
+            addScore(3);
+            if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows += 2; arrowCountEl.textContent = Math.min(bow.arrows, bow.maxArrows); }
+            swing.creatureHits.push('b'+bi);
+          }
+        }
+      }
+
+      // Hit tendrils
+      for (let ti = dragon.tendrils.length - 1; ti >= 0; ti--) {
+        const td = dragon.tendrils[ti];
+        if (!td.alive || swing.creatureHits.includes('t'+ti)) continue;
+        const d = ps.pos.distanceTo(td.pos);
+        if (d < 4) {
+          const toT = new THREE.Vector3().subVectors(td.pos, ps.pos); toT.y = 0; toT.normalize();
+          if (toT.dot(_gFwd) > 0.3) {
+            td.alive = false;
+            scene.remove(td.mesh);
+            spawnKillEffect(td.pos, [0x6a2288, 0xff66cc, 0xff99dd, 0xffffff]);
+            addScore(2);
+            dragon.tendrils.splice(ti, 1);
+            swing.creatureHits.push('t'+ti);
+          }
+        }
+      }
+    }
+
+    if (swing.timer >= swing.duration) {
+      swing.active = false; swing.cooldown = 0.22; armRP.rotation.x = 0;
+      swing.creatureHits = [];
+    }
+  }
+  if (swing.cooldown > 0) swing.cooldown -= dt;
+
+  // ── Void motes drift ──
+  const t = now * 0.001;
+  voidMotes.forEach(m => {
+    m.mesh.position.y = m.baseY + Math.sin(t * m.speed + m.phase) * 0.7;
+    m.mesh.rotation.y += dt * 0.6;
+    m.mesh.material.opacity = 0.4 + Math.sin(t * 2 + m.phase) * 0.25;
+  });
+
+  // ── Void puddles pulse ──
+  voidPuddles.forEach((p, idx) => {
+    p.material.opacity = 0.45 + Math.sin(t * 1.4 + idx) * 0.18;
+  });
+
+  // ── Wraith drift ──
+  wraithList.forEach(w => {
+    if (!w.alive) return;
+    w.angle += dt * 0.5;
+    w.pos.x += Math.sin(w.angle) * w.speed * dt;
+    w.pos.z += Math.cos(w.angle) * w.speed * dt;
+    w.pos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, w.pos.x));
+    w.pos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, w.pos.z));
+    w.pos.y = w.baseY + Math.sin(t * 1.8 + w.bobPhase) * 0.5;
+    w.mesh.position.copy(w.pos);
+    w.mesh.rotation.y += dt * 1.0;
+    if (ps.pos.distanceTo(w.pos) < 1.4 && ps.alive) damagePlayer();
+  });
+
+  // ── Bats circle ──
+  batList.forEach(b => {
+    if (!b.alive) return;
+    b.angle += b.speed * 0.03 * dt;
+    b.pos.x = b.centerX + Math.cos(b.angle) * b.circleRadius;
+    b.pos.z = b.centerZ + Math.sin(b.angle) * b.circleRadius;
+    b.pos.y = b.baseY + Math.sin(t * 3 + b.flapPhase) * 0.6;
+    b.mesh.position.copy(b.pos);
+    b.mesh.rotation.y = b.angle + Math.PI / 2;
+    const flapAngle = Math.sin(t * 8 + b.flapPhase) * 0.5;
+    b.wingL.rotation.z = flapAngle;
+    b.wingR.rotation.z = -flapAngle;
+    if (ps.pos.distanceTo(b.pos) < 1.6 && ps.alive) damagePlayer();
+  });
+
+  // ── Tendrils — slow chase ──
+  dragon.tendrils.forEach(td => {
+    if (!td.alive) return;
+    const tx = ps.pos.x - td.pos.x;
+    const tz = ps.pos.z - td.pos.z;
+    const d = Math.sqrt(tx*tx + tz*tz);
+    if (d > 0.5) {
+      td.pos.x += (tx / d) * td.speed * dt;
+      td.pos.z += (tz / d) * td.speed * dt;
+    }
+    td.pos.y = getTerrainHeight(td.pos.x, td.pos.z);
+    td.mesh.position.copy(td.pos);
+    td.mesh.rotation.y = Math.atan2(tx, tz);
+    if (d < 1.6 && ps.alive) damagePlayer();
+  });
+
+  // ── Kill particles ──
+  for (let ki = killParticles.length - 1; ki >= 0; ki--) {
+    const kp = killParticles[ki];
+    kp.age += dt;
+    kp.vel.y -= 14 * dt;
+    kp.mesh.position.x += kp.vel.x * dt;
+    kp.mesh.position.y += kp.vel.y * dt;
+    kp.mesh.position.z += kp.vel.z * dt;
+    kp.mesh.rotation.x += dt * 4;
+    kp.mesh.rotation.z += dt * 3;
+    kp.mesh.material.opacity = 1 - kp.age / 1.5;
+    kp.mesh.material.transparent = true;
+    if (kp.age > 1.5) {
+      scene.remove(kp.mesh);
+      killParticles.splice(ki, 1);
+    }
+  }
+
+  // ── Cursed light flicker ──
+  voidLight1.intensity = 1.8 + Math.sin(t * 2.2) * 0.4;
+  voidLight2.intensity = 1.3 + Math.sin(t * 1.8 + 1) * 0.25;
+
+  // ── DREADMAW — AI & animation ──
+  if (dragon.alive && !dragon.exploding) {
+    const dxd = ps.pos.x - dragon.pos.x, dzd = ps.pos.z - dragon.pos.z;
+    const distPlayer = Math.sqrt(dxd*dxd + dzd*dzd);
+
+    dragon.flyPatrolTimer += dt;
+    dragon.flyAngle += dt * 0.1;
+    dragon.flyCenterX += (ps.pos.x - dragon.flyCenterX) * dt * 0.05;
+    dragon.flyCenterZ += (ps.pos.z - dragon.flyCenterZ) * dt * 0.05;
+    dragon.flyCenterX = Math.max(-60, Math.min(60, dragon.flyCenterX));
+    dragon.flyCenterZ = Math.max(-60, Math.min(60, dragon.flyCenterZ));
+
+    const speedMult = distPlayer > 25 ? 0.45 : (distPlayer > 12 ? 0.55 : 0.18);
+    const flyR = dragon.flyRadius * (0.7 + Math.sin(t * 0.4) * 0.3);
+    const targetX = dragon.flyCenterX + Math.cos(dragon.flyAngle) * flyR * speedMult;
+    const targetZ = dragon.flyCenterZ + Math.sin(dragon.flyAngle) * flyR * speedMult;
+
+    dragon.pos.x += (targetX - dragon.pos.x) * dt * dragon.flySpeed * 0.09;
+    dragon.pos.z += (targetZ - dragon.pos.z) * dt * dragon.flySpeed * 0.09;
+    dragon.pos.x = Math.max(-BOUNDARY+12, Math.min(BOUNDARY-12, dragon.pos.x));
+    dragon.pos.z = Math.max(-BOUNDARY+12, Math.min(BOUNDARY-12, dragon.pos.z));
+
+    const flyBaseY = getTerrainHeight(dragon.pos.x, dragon.pos.z) + 4;
+    dragon.pos.y = flyBaseY + Math.sin(t * 2.2) * 0.6 + Math.sin(t * 4.0) * 0.2;
+    dragon.mesh.position.copy(dragon.pos);
+
+    // Wing flap
+    const flap = Math.sin(t * 2.8) * 0.42;
+    dragon.wingLP.rotation.z =  flap;
+    dragon.wingRP.rotation.z = -flap;
+
+    // Cursed aura pulse
+    dragon.aura.material.opacity = 0.15 + Math.sin(t * 2) * 0.08;
+    dragon.aura.scale.setScalar(1 + Math.sin(t * 1.5) * 0.06);
+
+    // Face player
+    const wantAngle = Math.atan2(dxd, dzd) + Math.PI;
+    let diff = wantAngle - dragon.angle;
+    while (diff >  Math.PI) diff -= 2*Math.PI;
+    while (diff < -Math.PI) diff += 2*Math.PI;
+    dragon.angle += diff * Math.min(dt * 3.0, 1);
+    dragon.mesh.rotation.y = dragon.angle;
+
+    // ── ATTACK: Void Blast ──
+    if (distPlayer < 60 && ps.alive) {
+      dragon.attackTimer -= dt;
+      if (dragon.attackTimer <= 0) {
+        spawnVoidBlast();
+        const hpRatio = dragon.hp / dragon.maxHp;
+        dragon.attackTimer = dragon.attackCooldown * (0.45 + hpRatio * 0.55);
+      }
+    }
+
+    // ── ATTACK: Doom Beam ──
+    if (distPlayer < 40 && ps.alive) {
+      dragon.doomTimer -= dt;
+      if (dragon.doomTimer <= 0) {
+        spawnDoomBeam();
+        dragon.doomTimer = 7 + Math.random() * 4;
+      }
+    }
+
+    // ── ATTACK: Shadow Tendril ──
+    if (distPlayer < 50 && ps.alive) {
+      dragon.tendrilTimer -= dt;
+      if (dragon.tendrilTimer <= 0) {
+        const aliveTendrils = dragon.tendrils.filter(td => td.alive).length;
+        if (aliveTendrils < 4) {
+          spawnShadowTendril();
+        }
+        dragon.tendrilTimer = 5 + Math.random() * 4;
+      }
+    }
+
+    if (distPlayer < 4 && ps.alive) {
+      damagePlayer();
+    }
+
+    if (dragon.hitFlash > 0) {
+      dragon.hitFlash -= dt;
+      const f = Math.max(0, dragon.hitFlash) / 0.25;
+      dragonParts.eyeMatL.emissiveIntensity = 1.8 + f * 3.5;
+      dragonParts.eyeMatR.emissiveIntensity = 1.8 + f * 3.5;
+    }
+  }
+
+  // ── Void blasts move ──
+  for (let i = dragon.voidBlasts.length - 1; i >= 0; i--) {
+    const b = dragon.voidBlasts[i];
+    b.age += dt;
+    b.mesh.position.x += b.vel.x * dt;
+    b.mesh.position.y += b.vel.y * dt;
+    b.mesh.position.z += b.vel.z * dt;
+    b.mesh.rotation.x += dt * 6;
+    b.mesh.rotation.y += dt * 4;
+    const scale = 1 + Math.sin(b.age * 12) * 0.25;
+    b.mesh.scale.setScalar(scale);
+
+    if (b.mesh.position.distanceTo(ps.pos) < 1.6 && ps.alive) {
+      damagePlayer();
+      scene.remove(b.mesh);
+      dragon.voidBlasts.splice(i, 1);
+      continue;
+    }
+
+    if (b.age > 4) {
+      scene.remove(b.mesh);
+      dragon.voidBlasts.splice(i, 1);
+    }
+  }
+
+  // ── Doom beams pulse + damage ──
+  for (let i = dragon.doomBeams.length - 1; i >= 0; i--) {
+    const beam = dragon.doomBeams[i];
+    beam.age += dt;
+    beam.mesh.children.forEach(seg => {
+      seg.material.opacity = 0.5 + Math.sin(beam.age * 14) * 0.35;
+    });
+    if (!beam.struck && beam.age > 1.0) {
+      beam.struck = true;
+      // Damage player if standing on the line
+      const px = ps.pos.x - beam.startX, pz = ps.pos.z - beam.startZ;
+      const along = px * beam.dirX + pz * beam.dirZ;
+      const perp = Math.abs(px * beam.dirZ - pz * beam.dirX);
+      if (along > 0 && along < beam.len && perp < 1.6 && ps.alive) {
+        damagePlayer();
+      }
+      flashHitOverlay();
+      shakeTimer = Math.max(shakeTimer, 0.5);
+      shakeIntensity = 0.2;
+    }
+    if (beam.age > 1.5) {
+      scene.remove(beam.mesh);
+      dragon.doomBeams.splice(i, 1);
+    }
+  }
+
+  // ── Explosion particles ──
+  if (dragon.exploding) {
+    dragon.explodeAge += dt;
+    dragon.explodeParticles.forEach(p => {
+      p.age += dt;
+      p.vel.y -= 18 * dt;
+      p.mesh.position.x += p.vel.x * dt;
+      p.mesh.position.y += p.vel.y * dt;
+      p.mesh.position.z += p.vel.z * dt;
+      p.mesh.rotation.x += dt * 3;
+      p.mesh.rotation.z += dt * 2;
+      p.mesh.material.opacity = 1 - p.age / 3.0;
+      p.mesh.material.transparent = true;
+    });
+    if (dragon.explodeAge > 4) {
+      dragon.explodeParticles.forEach(p => scene.remove(p.mesh));
+      dragon.explodeParticles = [];
+      dragon.exploding = false;
+    }
+  }
+
+  // ── EPIC VICTORY SEQUENCE ──
+  if (victory.active) {
+    victory.timer += dt;
+
+    // Spawn light beam at 1s
+    if (!victory.beamSpawned && victory.timer > 1.0) {
+      victory.beamSpawned = true;
+      spawnLightBeam();
+      spawnVictoryFireworks();
+      flashHitOverlay();
+    }
+
+    // Light beam pulses & rises
+    if (victory.lightBeam) {
+      victory.lightBeam.children.forEach((seg, idx) => {
+        const phase = idx * 0.15 + victory.timer * 4;
+        seg.material.opacity = 0.5 + Math.sin(phase) * 0.35;
+        seg.scale.x = 1 + Math.sin(phase) * 0.15;
+        seg.scale.z = 1 + Math.cos(phase) * 0.15;
+      });
+      victory.lightBeam.rotation.y = victory.timer * 0.6;
+    }
+
+    // Update fireworks
+    for (let i = victory.fireworks.length - 1; i >= 0; i--) {
+      const f = victory.fireworks[i];
+      f.age += dt;
+      f.vel.y -= 14 * dt;
+      f.mesh.position.x += f.vel.x * dt;
+      f.mesh.position.y += f.vel.y * dt;
+      f.mesh.position.z += f.vel.z * dt;
+      f.mesh.rotation.x += dt * 5;
+      f.mesh.rotation.z += dt * 4;
+      f.mesh.material.opacity = Math.max(0, 1 - f.age / 3.5);
+      f.mesh.material.transparent = true;
+      if (f.age > 3.5) {
+        scene.remove(f.mesh);
+        victory.fireworks.splice(i, 1);
+      }
+    }
+
+    // Show final UI at 3.5s
+    if (victory.timer > 3.5 && finalVictoryEl.style.display !== 'flex') {
+      finalScoreEl.textContent = score;
+      finalVictoryEl.style.display = 'flex';
+    }
+
+    // Periodic firework bursts
+    if (victory.timer > 3 && Math.random() < 0.04) {
+      spawnVictoryFireworks();
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HIT DRAGON
+// ═══════════════════════════════════════════════════════════
+function hitDragon() {
+  dragon.hp--;
+  dragon.hitFlash = 0.25;
+  flashHitOverlay();
+  updateHpBar();
+
+  if (dragon.hp <= 0) {
+    dragon.alive = false;
+    dragon.exploding = true;
+    spawnExplosion();
+    addScore(10);
+    document.getElementById('dragon-hud').style.display = 'none';
+    // Clean up active attacks
+    dragon.voidBlasts.forEach(b => scene.remove(b.mesh));
+    dragon.voidBlasts = [];
+    dragon.doomBeams.forEach(b => scene.remove(b.mesh));
+    dragon.doomBeams = [];
+    dragon.tendrils.forEach(td => { if (td.alive) { scene.remove(td.mesh); td.alive = false; } });
+    dragon.tendrils.length = 0;
+    // Hide dragon body for victory beam
+    setTimeout(() => { dragon.mesh.visible = false; }, 1500);
+    victory.active = true;
+    victory.timer = 0;
+    shakeTimer = 1.5;
+    shakeIntensity = 0.35;
+    // Clear run-wide score so a fresh run starts at 0 next time the user begins from home
+    // (we leave it set so the final score remains visible — index.html clears it)
+  }
+}
+
+function respawnPlayer() {
+  ps.hp = ps.maxHp;
+  ps.alive = true;
+  ps.invincible = 2.0;
+  ps.pos.set(0, getTerrainHeight(0, 0), 0);
+  ps.velY = 0;
+  ps.onGround = true;
+  ps.angle = 0;
+  updatePlayerHpBar();
+  deathMsgEl.style.display = 'none';
+}
+
+animate();
+</script>
+</body>
+</html>
