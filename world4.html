@@ -624,39 +624,6 @@ function addScore(n) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  ROCK GOLEMS (summoned by Terravox)
-// ═══════════════════════════════════════════════════════════
-const golemList = [];
-const MAX_GOLEMS = 4;
-
-function createGolem(gx, gz) {
-  const root = new THREE.Group();
-  // Body
-  root.add(mkGlowBox(1.0, 1.4, 0.8, 0x6b5a44, 0x3a2a18, 0, 1.0, 0));
-  // Head
-  root.add(mkBox(0.6, 0.5, 0.5, 0x7a6b55, 0, 1.95, 0));
-  // Eyes
-  root.add(mkGlowBox(0.12, 0.08, 0.06, 0x4caf50, 0x2a8a20, -0.15, 2.0, -0.26));
-  root.add(mkGlowBox(0.12, 0.08, 0.06, 0x4caf50, 0x2a8a20, 0.15, 2.0, -0.26));
-  // Arms
-  root.add(mkBox(0.35, 1.0, 0.3, 0x5a4a38, -0.7, 0.9, 0));
-  root.add(mkBox(0.35, 1.0, 0.3, 0x5a4a38, 0.7, 0.9, 0));
-  // Legs
-  root.add(mkBox(0.35, 0.8, 0.35, 0x5a4a38, -0.3, 0.15, 0));
-  root.add(mkBox(0.35, 0.8, 0.35, 0x5a4a38, 0.3, 0.15, 0));
-  // Power core (green glow on chest)
-  root.add(mkGlowBox(0.3, 0.2, 0.3, 0x4caf50, 0x228a18, 0, 1.2, -0.42));
-
-  const gy = getTerrainHeight(gx, gz);
-  root.position.set(gx, gy, gz);
-  scene.add(root);
-  return {
-    mesh: root, pos: new THREE.Vector3(gx, gy, gz),
-    hp: 2, alive: true, speed: 2.5
-  };
-}
-
-// ═══════════════════════════════════════════════════════════
 //  TERRAVOX — THE EARTH COLOSSUS
 // ═══════════════════════════════════════════════════════════
 const DRAG_X = 42, DRAG_Z = 25;
@@ -766,14 +733,9 @@ const dragon = {
   attackTimer: 3,
   attackCooldown: 2.8,
   rockBolts: [],
-  // Earthquake attack
-  earthquakeTimer: 8,
-  fissures: [],
   // Boulder throw attack
   boulderTimer: 10,
   boulders: [],
-  // Golem summon
-  golemSummonTimer: 15,
   // Flying patrol
   flyAngle: 0,
   flySpeed: 2.0,
@@ -858,30 +820,6 @@ function spawnRockBolt() {
 
   scene.add(bolt);
   dragon.rockBolts.push({ mesh: bolt, vel: dir.multiplyScalar(16), age: 0 });
-}
-
-// ═══════════════════════════════════════════════════════════
-//  EARTHQUAKE ATTACK
-// ═══════════════════════════════════════════════════════════
-function triggerEarthquake() {
-  shakeTimer = 1.5;
-  shakeIntensity = 0.3;
-
-  for (let i = 0; i < 14; i++) {
-    const angle = (i / 14) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
-    const dist = 5 + Math.random() * 15;
-    const fx = dragon.pos.x + Math.sin(angle) * dist;
-    const fz = dragon.pos.z + Math.cos(angle) * dist;
-    const fy = getTerrainHeight(fx, fz);
-
-    const fissure = mkGlowBox(1.0, 0.3, 1.0, 0x4caf50, 0x2a8a20, 0, 0, 0);
-    fissure.material.transparent = true;
-    fissure.material.opacity = 0.8;
-    fissure.position.set(fx, fy + 0.15, fz);
-    fissure.rotation.y = Math.random() * Math.PI;
-    scene.add(fissure);
-    dragon.fissures.push({ mesh: fissure, age: 0, x: fx, z: fz });
-  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1127,26 +1065,6 @@ function animate() {
     }
     if (hitCreature) { scene.remove(a.mesh); arrowList.splice(ai, 1); continue; }
 
-    // Hit golems
-    for (let gi = golemList.length - 1; gi >= 0; gi--) {
-      const g = golemList[gi];
-      if (!g.alive) continue;
-      if (a.pos.distanceTo(g.pos) < 2.5) {
-        g.hp--;
-        if (g.hp <= 0) {
-          g.alive = false;
-          scene.remove(g.mesh);
-          spawnKillEffect(g.pos, [0x6b5a44, 0x4caf50, 0x7a6b55, 0xffffff]);
-          addScore(3);
-          if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows++; arrowCountEl.textContent = bow.arrows; }
-          golemList.splice(gi, 1);
-        }
-        hitCreature = true;
-        break;
-      }
-    }
-    if (hitCreature) { scene.remove(a.mesh); arrowList.splice(ai, 1); continue; }
-
     if (a.age > 3 || a.pos.y < getTerrainHeight(a.pos.x, a.pos.z)) {
       scene.remove(a.mesh);
       arrowList.splice(ai, 1);
@@ -1218,27 +1136,6 @@ function animate() {
         }
       }
 
-      // Hit golems
-      for (let gi = golemList.length - 1; gi >= 0; gi--) {
-        const g = golemList[gi];
-        if (!g.alive || swing.creatureHits.includes('g'+gi)) continue;
-        const d = ps.pos.distanceTo(g.pos);
-        if (d < 5) {
-          const toG = new THREE.Vector3().subVectors(g.pos, ps.pos); toG.y = 0; toG.normalize();
-          if (toG.dot(_gFwd) > 0.35) {
-            g.hp--;
-            if (g.hp <= 0) {
-              g.alive = false;
-              scene.remove(g.mesh);
-              spawnKillEffect(g.pos, [0x6b5a44, 0x4caf50, 0x7a6b55, 0xffffff]);
-              addScore(3);
-              if (bow.pickedUp && bow.arrows < bow.maxArrows) { bow.arrows++; arrowCountEl.textContent = bow.arrows; }
-              golemList.splice(gi, 1);
-            }
-            swing.creatureHits.push('g'+gi);
-          }
-        }
-      }
     }
 
     if (swing.timer >= swing.duration) {
@@ -1297,25 +1194,6 @@ function animate() {
     g.pos.y = getTerrainHeight(g.pos.x, g.pos.z);
     g.mesh.position.copy(g.pos);
     g.mesh.rotation.y = g.angle;
-  });
-
-  // ────────────────────────────────────────────────────────
-  //  GOLEMS — AI (pursue player)
-  // ────────────────────────────────────────────────────────
-  golemList.forEach(g => {
-    if (!g.alive) return;
-    const toPlayerX = ps.pos.x - g.pos.x;
-    const toPlayerZ = ps.pos.z - g.pos.z;
-    const dist = Math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ);
-    if (dist > 0.5) {
-      g.pos.x += (toPlayerX / dist) * g.speed * dt;
-      g.pos.z += (toPlayerZ / dist) * g.speed * dt;
-    }
-    g.pos.y = getTerrainHeight(g.pos.x, g.pos.z);
-    g.mesh.position.copy(g.pos);
-    g.mesh.rotation.y = Math.atan2(toPlayerX, toPlayerZ);
-    // Contact damage
-    if (dist < 2 && ps.alive) damagePlayer();
   });
 
   // ────────────────────────────────────────────────────────
@@ -1402,38 +1280,12 @@ function animate() {
       }
     }
 
-    // ── EARTHQUAKE ──
-    if (distPlayer < 35 && ps.alive) {
-      dragon.earthquakeTimer -= dt;
-      if (dragon.earthquakeTimer <= 0) {
-        triggerEarthquake();
-        dragon.earthquakeTimer = 5 + Math.random() * 4;
-      }
-    }
-
     // ── BOULDER THROW ──
     if (distPlayer < 35 && distPlayer > 8 && ps.alive) {
       dragon.boulderTimer -= dt;
       if (dragon.boulderTimer <= 0) {
         throwBoulder();
         dragon.boulderTimer = 6 + Math.random() * 4;
-      }
-    }
-
-    // ── GOLEM SUMMON ──
-    if (distPlayer < 40 && ps.alive) {
-      dragon.golemSummonTimer -= dt;
-      if (dragon.golemSummonTimer <= 0) {
-        const aliveGolems = golemList.filter(g => g.alive).length;
-        const toSpawn = Math.min(3, MAX_GOLEMS - aliveGolems);
-        for (let i = 0; i < toSpawn; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist2 = 8 + Math.random() * 7;
-          const gx = dragon.pos.x + Math.sin(angle) * dist2;
-          const gz = dragon.pos.z + Math.cos(angle) * dist2;
-          golemList.push(createGolem(gx, gz));
-        }
-        dragon.golemSummonTimer = 12 + Math.random() * 6;
       }
     }
 
@@ -1477,32 +1329,6 @@ function animate() {
     if (b.age > 4) {
       scene.remove(b.mesh);
       dragon.rockBolts.splice(i, 1);
-    }
-  }
-
-  // ────────────────────────────────────────────────────────
-  //  EARTHQUAKE FISSURES — update
-  // ────────────────────────────────────────────────────────
-  for (let i = dragon.fissures.length - 1; i >= 0; i--) {
-    const f = dragon.fissures[i];
-    f.age += dt;
-
-    // Rise up briefly
-    if (f.age < 0.5) {
-      f.mesh.position.y = getTerrainHeight(f.x, f.z) + 0.15 + f.age * 0.6;
-    }
-    // Fade out
-    f.mesh.material.opacity = Math.max(0, 0.8 - (f.age - 0.5) / 1.5);
-
-    // Damage player if close
-    const dx = ps.pos.x - f.x, dz = ps.pos.z - f.z;
-    if (Math.sqrt(dx*dx + dz*dz) < 2 && f.age < 1.5 && ps.alive) {
-      damagePlayer();
-    }
-
-    if (f.age > 2) {
-      scene.remove(f.mesh);
-      dragon.fissures.splice(i, 1);
     }
   }
 
@@ -1591,13 +1417,8 @@ function hitDragon() {
     // Clean up all active attacks
     dragon.rockBolts.forEach(b => scene.remove(b.mesh));
     dragon.rockBolts = [];
-    dragon.fissures.forEach(f => scene.remove(f.mesh));
-    dragon.fissures = [];
     dragon.boulders.forEach(b => scene.remove(b.mesh));
     dragon.boulders = [];
-    // Kill all golems
-    golemList.forEach(g => { if (g.alive) { g.alive = false; scene.remove(g.mesh); } });
-    golemList.length = 0;
   }
 }
 
